@@ -1,0 +1,24 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net6.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\QuickImGuiNET\QuickImGuiNET.csproj" />
+    <ProjectReference Include="..\..\QuickImGuiNET.Veldrid\QuickImGuiNET.Veldrid.csproj" />
+    <ProjectReference Include="..\..\ImGui.NET\src\ImGui.NET\ImGui.NET.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Content Include="Icon.png">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      <Link>Icon.png</Link>
+    </Content>
+  </ItemGroup>
+
+</Project>
