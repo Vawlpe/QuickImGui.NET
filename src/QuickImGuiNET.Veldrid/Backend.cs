@@ -74,8 +74,8 @@ public class Backend : QuickImGuiNET.Backend, IDisposable
                 : throw new System.InvalidOperationException("No supported backend found...");
 
         // Create window, GraphicsDevice, and all resources necessary to render
-        _window = VeldridStartup.CreateWindow(new WindowCreateInfo(50, 50, width, height, WindowState.Normal, "RetroMole"));
-        _gd = VeldridStartup.CreateGraphicsDevice(_window, new GraphicsDeviceOptions(true, null, true, ResourceBindingModel.Improved, true, true), gfxbk);
+        _window = VeldridStartup.CreateWindow(new WindowCreateInfo(50, 50, width, height, WindowState.Normal, "QIMGUIN"));
+        _gd = VeldridStartup.CreateGraphicsDevice(_window, new GraphicsDeviceOptions(true, null, true, ResourceBindingModel.Improved, true, true), (GraphicsBackend)gfxbk);
         _cl = _gd.ResourceFactory.CreateCommandList();
 
         _window.Resized += () =>
@@ -100,7 +100,7 @@ public class Backend : QuickImGuiNET.Backend, IDisposable
         _IO = ImGui.GetIO();
 
         _IO.ConfigFlags |= ImGuiConfigFlags.DockingEnable;
-        if (gfxbk == GraphicsBackend.Vulkan)
+        if ((GraphicsBackend)gfxbk == GraphicsBackend.Vulkan)
             _IO.ConfigFlags |= ImGuiConfigFlags.ViewportsEnable;
 
         _platformIO = ImGui.GetPlatformIO();
@@ -136,6 +136,7 @@ public class Backend : QuickImGuiNET.Backend, IDisposable
         unsafe
         {
             _IO.NativePtr->BackendPlatformName = (byte*)new FixedAsciiString("QuickImGuiNET.Veldrid (SDL2) Backend").DataPtr;
+            _IO.NativePtr->BackendRendererName = (byte*)new FixedAsciiString(Enum.GetName(typeof(GraphicsBackend), gfxbk)).DataPtr;
         }
         _IO.BackendFlags |= ImGuiBackendFlags.HasMouseCursors;
         _IO.BackendFlags |= ImGuiBackendFlags.HasSetMousePos;
@@ -566,7 +567,7 @@ public class Backend : QuickImGuiNET.Backend, IDisposable
             (uint)Texture.Width,
             (uint)Texture.Height,
             1,1,1,
-            PixelFormat.B8_G8_R8_A8_UNorm,
+            PixelFormat.R8_G8_B8_A8_UNorm,
             TextureUsage.Sampled,
             TextureType.Texture2D
         ));    
