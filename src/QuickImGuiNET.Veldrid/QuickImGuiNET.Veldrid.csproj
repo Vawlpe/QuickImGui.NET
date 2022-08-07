@@ -10,9 +10,9 @@
   <ItemGroup>
     <ProjectReference Include="..\QuickImGuiNET\QuickImGuiNET.csproj" />
     <ProjectReference Include="..\ImGui.NET\src\ImGui.NET\ImGui.NET.csproj" />
-    <PackageReference Include="Veldrid" Version="4.8.0" />
-    <PackageReference Include="Veldrid.SDL2" Version="4.8.0" />
-    <PackageReference Include="Veldrid.StartupUtilities" Version="4.8.0" />
+    <PackageReference Include="Veldrid" Version="4.9.0-beta1" />
+    <PackageReference Include="Veldrid.SDL2" Version="4.9.0-beta1" />
+    <PackageReference Include="Veldrid.StartupUtilities" Version="4.9.0-beta1" />
   </ItemGroup>
 
   <ItemGroup>

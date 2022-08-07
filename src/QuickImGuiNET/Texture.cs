@@ -8,6 +8,7 @@ public class Texture
     public int Width;
     public int Height;
     public IntPtr ID;
+    public ScalingMode ScaleMode;
 
     //------------------------------------------------------------------------------------------------------------------------
     private Rgba32[] _Pixels;
@@ -40,16 +41,16 @@ public class Texture
     }
     
     //----------------------------------------------------------------------------------------------------------------------
-    public static Texture Bind(string FilePath, Backend backend)
+    public static Texture Bind(string FilePath, Backend backend, ScalingMode? scaleMode = null)
     {
-        var texture = new Texture(FilePath);
+        var texture = new Texture(FilePath, scaleMode ?? ScalingMode.Linear);
         texture.ID = backend.BindTexture(texture);
 
         texture.OnChanged += (e) => backend.UpdateTexture(e.newT);
 
         return texture;
     }
-    private Texture(string FilePath)
+    private Texture(string FilePath, ScalingMode scaleMode)
     {
         Image<Rgba32> img = Image.Load<Rgba32>(FilePath);
 
@@ -58,5 +59,13 @@ public class Texture
 
         _Pixels = new Rgba32[Width * Height];
         img.CopyPixelDataTo(Pixels);
+        ScaleMode = scaleMode;
+    }
+
+    //----------------------------------------------------------------------------------------------------------------------
+    public enum ScalingMode
+    {
+        Point,
+        Linear
     }
 }

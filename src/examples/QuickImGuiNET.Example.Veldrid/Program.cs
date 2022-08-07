@@ -26,7 +26,8 @@ public class Program
             Position = new Vector2(100, 100),
             Size = new Vector2(150, 200),
             SizeCond = ImGuiCond.FirstUseEver,
-            PositionCond = ImGuiCond.FirstUseEver
+            PositionCond = ImGuiCond.FirstUseEver,
+            IconRenderSize = new Vector2(128,128)
         });
         widgets.Add(new ExampleWidget()
         {
@@ -38,7 +39,18 @@ public class Program
             SizeCond = ImGuiCond.FirstUseEver,
             PositionCond = ImGuiCond.FirstUseEver,
 
-            IconSizeMult = 0.25f
+            IconRenderSize = new Vector2(256, 256)
+        });
+        widgets.Add(new ExampleWidget()
+        {
+            Visible = true,
+            RenderMode = WidgetRenderMode.Window,
+            Name = "ExampleWidget##example003",
+            Position = new Vector2(100, 630),
+            Size = new Vector2(275, 320),
+            SizeCond = ImGuiCond.FirstUseEver,
+            PositionCond = ImGuiCond.FirstUseEver,
+            IconRenderSize = new Vector2(1024,1024)
         });
 
         backend.Run(Draw);
