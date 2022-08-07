@@ -244,7 +244,7 @@ public class Backend : QuickImGuiNET.Backend, IDisposable
             _windowWidth / _scaleFactor.X,
             _windowHeight / _scaleFactor.Y);
         _IO.DisplayFramebufferScale = _scaleFactor;
-        _IO.DeltaTime = deltaSeconds; // DeltaTime is in seconds.
+        _IO.DeltaTime = deltaSeconds;
 
         _platformIO.Viewports[0].Pos = new Vector2(_window.X, _window.Y);
         _platformIO.Viewports[0].Size = new Vector2(_window.Width, _window.Height);
@@ -561,24 +561,35 @@ public class Backend : QuickImGuiNET.Backend, IDisposable
     }
 
     //-------------------------Bindings-----------------------------
-    public override IntPtr BindTexture(Texture Texture)
+    public override IntPtr BindTexture(Texture texture)
     {
         VR.Texture t = _gd.ResourceFactory.CreateTexture(new TextureDescription(
-            (uint)Texture.Width,
-            (uint)Texture.Height,
-            1,1,1,
+            (uint)texture.Width,
+            (uint)texture.Height,
+            1, (uint)(Math.Floor(Math.Log2(Math.Max(texture.Width, texture.Height))) + 1), 1,
             PixelFormat.R8_G8_B8_A8_UNorm,
-            TextureUsage.Sampled,
+            TextureUsage.Sampled | TextureUsage.GenerateMipmaps,
             TextureType.Texture2D
-        ));    
-        
-        _gd.UpdateTexture(t, Texture.Pixels, 0, 0, 0, (uint)Texture.Width, (uint)Texture.Height, 1, 0, 0);
+        ));
+
+        _gd.UpdateTexture(t, texture.Pixels, 0, 0, 0, (uint)texture.Width, (uint)texture.Height, 1, 0, 0);
+        var temp_cl = _gd.ResourceFactory.CreateCommandList();
+        temp_cl.Begin();
+        temp_cl.GenerateMipmaps(t);
+        temp_cl.End();
+        _gd.SubmitCommands(temp_cl);
+        temp_cl.Dispose();
 
         var tv = _gd.ResourceFactory.CreateTextureView(t);
         var rs = _gd.ResourceFactory.CreateResourceSet(new(
             _ftRL,
             tv,
-            _gd.PointSampler
+            texture.ScaleMode switch
+            {
+                Texture.ScalingMode.Point => _gd.LinearSampler,
+                Texture.ScalingMode.Linear => _gd.PointSampler,
+                _ => _gd.LinearSampler
+            }
         ));
 
         var ID = GetNextImGuiBindingID();
@@ -589,23 +600,34 @@ public class Backend : QuickImGuiNET.Backend, IDisposable
         return ID;
     }
     
-    public override IntPtr UpdateTexture(Texture Texture)
+    public override IntPtr UpdateTexture(Texture texture)
     {
-        VR.Texture t = Textures[Texture.ID].Target;
+        VR.Texture t = Textures[texture.ID].Target;
 
-        _gd.UpdateTexture(t, Texture.Pixels, 0, 0, 0, (uint)Texture.Width, (uint)Texture.Height, 1, 0, 0);
+        _gd.UpdateTexture(t, texture.Pixels, 0, 0, 0, (uint)texture.Width, (uint)texture.Height, 1, 0, 0);
+        var temp_cl = _gd.ResourceFactory.CreateCommandList();
+        temp_cl.Begin();
+        temp_cl.GenerateMipmaps(t);
+        temp_cl.End();
+        _gd.SubmitCommands(temp_cl);
+        temp_cl.Dispose();
 
         var tv = _gd.ResourceFactory.CreateTextureView(t);
         var rs = _gd.ResourceFactory.CreateResourceSet(new(
             _ftRL,
             tv,
-            _gd.PointSampler
+            texture.ScaleMode switch
+            {
+                Texture.ScalingMode.Point => _gd.LinearSampler,
+                Texture.ScalingMode.Linear => _gd.PointSampler,
+                _ => _gd.LinearSampler
+            }
         ));
 
-        Textures[Texture.ID] = tv;
-        _textureRS[Texture.ID] = rs;
+        Textures[texture.ID] = tv;
+        _textureRS[texture.ID] = rs;
 
-        return Texture.ID;
+        return texture.ID;
     }
     public override void FreeTexture(IntPtr ID)
     {
