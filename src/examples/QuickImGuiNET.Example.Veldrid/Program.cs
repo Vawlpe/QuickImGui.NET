@@ -18,40 +18,38 @@ public class Program
 
         backend = new VRBK.Backend(width, height, veldridBackendIndex);
         
-        widgets.Add(new ExampleWidget()
-        {
-            Visible = true,
-            RenderMode = WidgetRenderMode.Window,
-            Name = "ExampleWidget##example001",
-            Position = new Vector2(100, 100),
-            Size = new Vector2(150, 200),
-            SizeCond = ImGuiCond.FirstUseEver,
-            PositionCond = ImGuiCond.FirstUseEver,
-            IconRenderSize = new Vector2(128,128)
-        });
-        widgets.Add(new ExampleWidget()
-        {
-            Visible = true,
-            RenderMode = WidgetRenderMode.Window,
-            Name = "ExampleWidget##example002",
-            Position = new Vector2(100, 310),
-            Size = new Vector2(275, 320),
-            SizeCond = ImGuiCond.FirstUseEver,
-            PositionCond = ImGuiCond.FirstUseEver,
-
-            IconRenderSize = new Vector2(256, 256)
-        });
-        widgets.Add(new ExampleWidget()
-        {
-            Visible = true,
-            RenderMode = WidgetRenderMode.Window,
-            Name = "ExampleWidget##example003",
-            Position = new Vector2(100, 630),
-            Size = new Vector2(275, 320),
-            SizeCond = ImGuiCond.FirstUseEver,
-            PositionCond = ImGuiCond.FirstUseEver,
-            IconRenderSize = new Vector2(1024,1024)
-        });
+        widgets = new() {
+            new ExampleWidget() {
+                Visible = true,
+                RenderMode = WidgetRenderMode.Window,
+                Name = "ExampleWidget##example001",
+                Position = new Vector2(100, 100),
+                Size = new Vector2(150, 200),
+                SizeCond = ImGuiCond.FirstUseEver,
+                PositionCond = ImGuiCond.FirstUseEver,
+                IconRenderSize = new Vector2(128, 128)
+            },
+            new ExampleWidget() {
+                Visible = true,
+                RenderMode = WidgetRenderMode.Window,
+                Name = "ExampleWidget##example002",
+                Position = new Vector2(100, 310),
+                Size = new Vector2(275, 320),
+                SizeCond = ImGuiCond.FirstUseEver,
+                PositionCond = ImGuiCond.FirstUseEver,
+                IconRenderSize = new Vector2(256, 256)
+            },
+            new ExampleWidget() {
+                Visible = true,
+                RenderMode = WidgetRenderMode.Window,
+                Name = "ExampleWidget##example003",
+                Position = new Vector2(100, 100),
+                Size = new Vector2(150, 200),
+                SizeCond = ImGuiCond.FirstUseEver,
+                PositionCond = ImGuiCond.FirstUseEver,
+                IconRenderSize = new Vector2(512, 512)
+            },
+        };
 
         backend.Run(Draw);
     }
