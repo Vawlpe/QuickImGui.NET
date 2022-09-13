@@ -1,6 +1,3 @@
-# Pico-8 carts
-*.p8
-
 # ImGui Layout Config
 **/imgui.ini
 

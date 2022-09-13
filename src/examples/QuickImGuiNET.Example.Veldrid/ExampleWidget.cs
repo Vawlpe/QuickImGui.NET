@@ -28,7 +28,7 @@ public class ExampleWidget : Widget
             UI.WithDisabled(new UI.WithFlags(), () => TestCountdown == 0,
                 () => ImGui.Checkbox(TestCountdown > 0 ? $"Random Cooldown({TestCountdown:F0}s left...)" : "You can click now lol~!", ref TestEnabled)
             );
-            
+
             UI.WithDisabled(new UI.WithFlags(), () => TestEnabled,
                 () => UI.WithColors(new UI.WithFlags(),
                     () => TestDragVal > 25,
