@@ -2,127 +2,144 @@ namespace QuickImGuiNET.Utils;
 using ImGuiNET;
 public static partial class UI
 {
-    public enum WithFailFlags {
-        None        = 0x00,
-        SkipEffect  = 0x01,
-        SkipElement = 0x02,
-        Stop        = 0x04,
-        Custom      = 0x08
-    }
-    public enum WithUndoFlags {
-        None          = 0x00,
-        Before        = 0x01,
-        After         = 0x02,
-        Once          = 0x04
-    }
-    public enum WithEffectFlags {
-        None          = 0x00,
-        Before        = 0x01,
-        After         = 0x02,
-        Once          = 0x04
-    }
     public struct WithFlags {
-        public WithFailFlags   FailFlags;
-        public WithUndoFlags   UndoFlags;
-        public WithEffectFlags EffectFlags;
+        public FailFlags   Fail;
+        public EffectFlags Effect;
+        public EffectFlags Undo;
+
+        public enum FailFlags
+        {
+            //10101
+            Ignore = 0b00, Skip = 0b01, Stop = 0b10,
+            Element = 0b100, Effect = 0b1000, Undo = 0b10000,
+            Custom = 0b100000,
+            //-----------------------------------------------
+            SkipElement       = Skip|Element,
+            SkipEffect        = Skip|Effect,
+            SkipUndo          = Skip|Undo,
+            CustomSkipElement = Custom|Skip|Element,
+            CustomSkipEffect  = Custom|Skip|Effect,
+            CustomSkipUndo    = Custom|Skip|Undo,
+            CustomStop        = Custom|Stop,
+        }
+        public enum EffectFlags
+        {
+            Ignore = 0b00, Before = 0b01, After = 0b10, Once = 0b100,
+            //-------------------------------------------------------
+            OnceBefore = Once|Before,
+            OnceAfter  = Once|After,
+            Around     = Before|After,
+            OnceAround = Once|Around
+        }
     }
 
-    public static void With(Action Effect, Action? UndoEffect, Action? CustomFail, WithFlags Flags, Func<bool>? Condition, params Action[] Elements)
+    public static void With(WithFlags Flags, Action Effect,  Action? UndoEffect = null, Action? CustomFail = null, Func<bool>? Condition = null, params Action[] Elements)
     {
-        WithFailFlags   Ffail = Flags.FailFlags;
-        WithUndoFlags   Fundo = Flags.UndoFlags;
-        WithEffectFlags Feffe = Flags.EffectFlags;
+        Condition  ??= () => true;
+        UndoEffect ??= () => {};
+        CustomFail ??= () => {};
+        List<Action> Callbacks = new();
 
-        if (Condition is null)
-                Condition = () => true;
-        if (UndoEffect is null)
-            UndoEffect = () => {};
-        if (CustomFail is null)
-            CustomFail = () => {};
+        // Cache re-usable flag queries
+        bool hasSkipEffect  = Flags.Fail.HasFlag(WithFlags.FailFlags.SkipEffect);
+        bool hasSkipUndo    = Flags.Fail.HasFlag(WithFlags.FailFlags.SkipUndo);
+        bool hasSkipElement = Flags.Fail.HasFlag(WithFlags.FailFlags.SkipElement);
+        bool hasStop        = Flags.Fail.HasFlag(WithFlags.FailFlags.Stop);
+        bool hasCustom      = Flags.Fail.HasFlag(WithFlags.FailFlags.Custom);
 
-        if (Feffe.HasFlag(WithEffectFlags.Once | WithEffectFlags.Before))
-            if (!(Ffail.HasFlag(WithFailFlags.SkipEffect) && !Condition()))
-                Effect();
+        // ONCE-BEFORE
+        // (condition cache)
+        bool failed      = !Condition();
+        bool skipEffect  = hasSkipEffect && failed;
+        bool skipUndo    = hasSkipUndo   && failed;
+        bool skipElement = false;
         
-        if (Fundo.HasFlag(WithUndoFlags.Once | WithUndoFlags.Before))
-            UndoEffect();
+        if (Flags.Effect.HasFlag(WithFlags.EffectFlags.OnceBefore) && !skipEffect)
+            Callbacks.Add(Effect);
+        if (Flags.Undo.HasFlag(WithFlags.EffectFlags.OnceBefore) && !skipUndo)
+            Callbacks.Add(UndoEffect);
 
         for (int i = 0; i < Elements.Length; i++)
         {
-            if (Ffail.HasFlag(WithFailFlags.Stop) && !Condition())
+            // BEFORE
+            failed = !Condition();
+            if (hasCustom && failed)
+                Callbacks.Add(CustomFail);
+            if (hasStop && failed)
                 break;
+            skipEffect  = hasSkipEffect  && failed;
+            skipUndo    = hasSkipUndo    && failed;
+            skipElement = hasSkipElement && failed;
 
-            if (Ffail.HasFlag(WithFailFlags.Custom) && !Condition())
-                CustomFail();
+            if ((Flags.Effect ^ WithFlags.EffectFlags.Once).HasFlag(WithFlags.EffectFlags.OnceBefore) && !skipEffect)
+                Callbacks.Add(Effect);
+            if ((Flags.Undo ^ WithFlags.EffectFlags.Once).HasFlag(WithFlags.EffectFlags.OnceBefore) && !skipUndo)
+                Callbacks.Add(UndoEffect);
 
-            if (!Feffe.HasFlag(WithEffectFlags.Once) && Feffe.HasFlag(WithEffectFlags.Before))
-                if (!(Ffail.HasFlag(WithFailFlags.SkipEffect) && !Condition()))
-                    Effect();
-            
-            if (!Fundo.HasFlag(WithUndoFlags.Once) && Fundo.HasFlag(WithUndoFlags.Before))
-                UndoEffect();
+            // Element
+            if (!skipElement) Callbacks.Add(Elements[i]);
 
-            if (!(Ffail.HasFlag(WithFailFlags.SkipElement) && !Condition()))
-                Elements[i]();
-
-            if (!Feffe.HasFlag(WithEffectFlags.Once) && Feffe.HasFlag(WithEffectFlags.After))
-                if (!(Ffail.HasFlag(WithFailFlags.SkipEffect) && !Condition()))
-                    Effect();
-            
-            if (!Fundo.HasFlag(WithUndoFlags.Once) && Fundo.HasFlag(WithUndoFlags.After))
-                UndoEffect();
+            // AFTER
+            if ((Flags.Effect ^ WithFlags.EffectFlags.Once).HasFlag(WithFlags.EffectFlags.OnceAfter) && !skipEffect)
+                Callbacks.Add(Effect);
+            if ((Flags.Undo ^ WithFlags.EffectFlags.Once).HasFlag(WithFlags.EffectFlags.OnceAfter) && !skipUndo)
+                Callbacks.Add(UndoEffect);
         }
 
-        if (Feffe.HasFlag(WithEffectFlags.Once | WithEffectFlags.After))
-            if (!(Ffail.HasFlag(WithFailFlags.SkipEffect) && !Condition()))
-                Effect();
+        // ONCE-AFTER
+        failed      = !Condition();
+        skipEffect  = hasSkipEffect && failed;
+        skipUndo    = hasSkipUndo   && failed;
 
-        if (Fundo.HasFlag(WithUndoFlags.Once | WithUndoFlags.After))
-            UndoEffect();
+        if (Flags.Effect.HasFlag(WithFlags.EffectFlags.OnceAfter) && !skipEffect)
+            Callbacks.Add(Effect);
+        if (Flags.Undo.HasFlag(WithFlags.EffectFlags.OnceAfter) && !skipUndo)
+            Callbacks.Add(UndoEffect);
+
+        // Execute
+        Array.ForEach(Callbacks.ToArray(), (c) => c());
     }
 
     public static void WithSameLine(WithFlags Flags, Func<bool>? Condition, params Action[] Elements) => With(
-        () => ImGui.SameLine(),
-        () => ImGui.Dummy(new(0,0)),
-        null,
-        new () {
-            FailFlags   = Flags.FailFlags,
-            UndoFlags   = Flags.UndoFlags   | WithUndoFlags.After   | WithUndoFlags.Once,
-            EffectFlags = Flags.EffectFlags | WithEffectFlags.After
+        Flags: new() {
+            Fail   = Flags.Fail,
+            Effect = Flags.Effect | WithFlags.EffectFlags.After,
+            Undo   = Flags.Undo   | WithFlags.EffectFlags.OnceAfter
         },
-        Condition, Elements
+        Effect:     () => ImGui.SameLine(),
+        UndoEffect: () => ImGui.Dummy(new(0,0)),
+        Condition: Condition, Elements: Elements
     );
     public static void WithDisabled(WithFlags Flags, Func<bool>? Condition, params Action[] Elements) => With(
-        () => ImGui.BeginDisabled(Condition is null ? true : !Condition()),
-        () => ImGui.EndDisabled(),
-        null,
-        new() {
-            FailFlags   = Flags.FailFlags,
-            UndoFlags   = Flags.UndoFlags   | WithUndoFlags.After    | WithUndoFlags.Once,
-            EffectFlags = Flags.EffectFlags | WithEffectFlags.Before | WithEffectFlags.Once
+        Flags: new() {
+            Fail   = Flags.Fail,
+            Effect = Flags.Effect | WithFlags.EffectFlags.OnceBefore,
+            Undo   = Flags.Undo   | WithFlags.EffectFlags.OnceAfter
         },
-        Condition, Elements
+        Effect:     () => ImGui.BeginDisabled(Condition is null ? true : !Condition()),
+        UndoEffect: () => ImGui.EndDisabled(),
+        Condition: Condition, Elements: Elements
     );
     public static void WithColors(WithFlags Flags, Func<bool>? Condition, (ImGuiCol, uint)[] Colors, params Action[] Elements) => With(
-        () => Array.ForEach(Colors, (c) => ImGui.PushStyleColor(c.Item1, c.Item2)),
-        () => ImGui.PopStyleColor(Colors.Length),
-        () => ImGui.PushStyleColor(ImGuiCol.Text, ImGui.GetColorU32(ImGuiCol.Text)),
-        new() { 
-            FailFlags   = Flags.FailFlags   | WithFailFlags.Custom   | WithFailFlags.SkipEffect,
-            UndoFlags   = Flags.UndoFlags   | WithUndoFlags.After,
-            EffectFlags = Flags.EffectFlags | WithEffectFlags.Before
+        Flags: new() { 
+            Fail   = Flags.Fail   | WithFlags.FailFlags.CustomSkipEffect,
+            Effect = Flags.Effect | WithFlags.EffectFlags.Before,
+            Undo   = Flags.Undo   | WithFlags.EffectFlags.After
         },
-        Condition, Elements
+        Effect:     () => Array.ForEach(Colors, (c) => ImGui.PushStyleColor(c.Item1, c.Item2)),
+        UndoEffect: () => ImGui.PopStyleColor(Colors.Length),
+        CustomFail: () => ImGui.PushStyleColor(ImGuiCol.Text, ImGui.GetColorU32(ImGuiCol.Text)),
+        Condition: Condition, Elements: Elements
     );
     public static void WithStyles(WithFlags Flags, Func<bool>? Condition, (ImGuiStyleVar, dynamic)[] Colors, params Action[] Elements) => With(
-        () => Array.ForEach(Colors, (c) => ImGui.PushStyleVar(c.Item1, c.Item2)),
-        () => ImGui.PopStyleVar(Colors.Length),
-        () => ImGui.PushStyleVar(ImGuiStyleVar.Alpha, ImGui.GetStyle().Alpha),
-        new() { 
-            FailFlags   = Flags.FailFlags   | WithFailFlags.Custom,
-            UndoFlags   = Flags.UndoFlags   | WithUndoFlags.After,
-            EffectFlags = Flags.EffectFlags | WithEffectFlags.Before
+        Flags: new() { 
+            Fail   = Flags.Fail   | WithFlags.FailFlags.CustomSkipEffect,
+            Effect = Flags.Effect | WithFlags.EffectFlags.Before,
+            Undo   = Flags.Undo   | WithFlags.EffectFlags.After
         },
-        Condition, Elements
+        Effect:     () => Array.ForEach(Colors, (c) => ImGui.PushStyleVar(c.Item1, c.Item2)),
+        UndoEffect: () => ImGui.PopStyleVar(Colors.Length),
+        CustomFail: () => ImGui.PushStyleVar(ImGuiStyleVar.Alpha, ImGui.GetStyle().Alpha),
+        Condition: Condition, Elements: Elements
     );
 }
