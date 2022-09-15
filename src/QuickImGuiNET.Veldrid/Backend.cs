@@ -87,9 +87,9 @@ public class Backend : QuickImGuiNET.Backend, IDisposable
         _windowHeight = height;
 
         // Load and set icon
-        if (File.Exists(Path.Combine(Path.GetDirectoryName(Assembly.GetEntryAssembly().Location), "Icon.png")))
+        if (File.Exists(Path.Combine(Path.GetDirectoryName(Assembly.GetEntryAssembly().Location) ?? "", "Icon.png")))
         {
-            var icon_src = SDL2Extensions.SDL_RWFromFile.Invoke(Path.Combine(Path.GetDirectoryName(Assembly.GetEntryAssembly().Location), "Icon.png"), "rb");
+            var icon_src = SDL2Extensions.SDL_RWFromFile.Invoke(Path.Combine(Path.GetDirectoryName(Assembly.GetEntryAssembly().Location) ?? "", "Icon.png"), "rb");
             _icon = SDL2Extensions.SDL_LoadBMP_RW.Invoke(icon_src, 1);
             SDL2Extensions.SDL_SetWindowIcon.Invoke(_window.SdlWindowHandle, _icon);
         }
@@ -158,11 +158,11 @@ public class Backend : QuickImGuiNET.Backend, IDisposable
 
     public override void Run(
         Action  DrawUICallback,
-        float   deltaSeconds        = 1f / 60f,
-        Action? UpdateCallback      = null,
-        Action? RenderCallback      = null,
-        Action? EarlyUpdateCallback = null,
-        Action? EarlyRenderCallback = null
+        float   deltaSeconds          = 1f / 60f,
+        Action<float>? UpdateCallback = null,
+        Action? RenderCallback        = null,
+        Action? EarlyUpdateCallback   = null,
+        Action? EarlyRenderCallback   = null
     )
     {
         // Main application loop
@@ -173,7 +173,7 @@ public class Backend : QuickImGuiNET.Backend, IDisposable
 
             EarlyUpdateCallback?.Invoke();
             Update(deltaSeconds, input);
-            UpdateCallback?.Invoke();
+            UpdateCallback?.Invoke(deltaSeconds);
 
             DrawUICallback.Invoke();
 

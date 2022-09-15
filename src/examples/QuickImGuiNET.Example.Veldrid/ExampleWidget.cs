@@ -14,9 +14,15 @@ public class ExampleWidget : Widget
     public int TestDragVal;
     public float TestCountdown = 0;
     public int TestCooldownMult;
-    public ExampleWidget() : base()
+    public ExampleWidget(Backend backend) : base()
     {
+        backend.Events["onMainMenuBar"]["Debug"].Hook += RenderOnMainMenuBar_Debug;
         IconTexture = Texture.Bind(Path.Combine(Path.GetDirectoryName(Assembly.GetEntryAssembly().Location), "Icon.png"), Program.backend);
+    }
+    public dynamic? RenderOnMainMenuBar_Debug(params dynamic[]? args)
+    {
+        ImGui.MenuItem($"Open {Name}##{Name}", string.Empty, ref Visible);
+        return null;
     }
     public override void RenderContent()
     {

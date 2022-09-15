@@ -17,9 +17,14 @@ public class Program
         int veldridBackendIndex = int.Parse(args[2]);
 
         backend = new VRBK.Backend(width, height, veldridBackendIndex);
-        
+        backend.Events = new() {
+            {"onMainMenuBar", new(new() {
+                {"Debug", new()}
+            })}
+        };
+
         widgets = new() {
-            new ExampleWidget() {
+            new ExampleWidget(backend) {
                 Visible = true,
                 RenderMode = WidgetRenderMode.Window,
                 Name = "ExampleWidget##example001",
@@ -29,7 +34,7 @@ public class Program
                 PositionCond = ImGuiCond.FirstUseEver,
                 IconRenderSize = new Vector2(128, 128)
             },
-            new ExampleWidget() {
+            new ExampleWidget(backend) {
                 Visible = true,
                 RenderMode = WidgetRenderMode.Window,
                 Name = "ExampleWidget##example002",
@@ -39,7 +44,7 @@ public class Program
                 PositionCond = ImGuiCond.FirstUseEver,
                 IconRenderSize = new Vector2(256, 256)
             },
-            new ExampleWidget() {
+            new ExampleWidget(backend) {
                 Visible = true,
                 RenderMode = WidgetRenderMode.Window,
                 Name = "ExampleWidget##example003",
@@ -51,7 +56,7 @@ public class Program
             },
         };
 
-        backend.Run(Draw);
+        backend.Run(Draw, UpdateCallback: Update);
     }
 
     public static bool showDemoWindow = false;
@@ -61,7 +66,14 @@ public class Program
         ImGui.DockSpaceOverViewport();
         if (ImGui.BeginMainMenuBar())
         {
-            ImGui.MenuItem("Show Demo Window", "", ref showDemoWindow);
+            if (ImGui.BeginMenu("Debug"))
+            {
+                ImGui.MenuItem("Show Demo Window", String.Empty, ref showDemoWindow);
+                backend.Events["onMainMenuBar"]["Debug"].Invoke();
+                ImGui.EndMenu();
+            }
+            
+            backend.Events["onMainMenuBar"].Invoke();
             ImGui.EndMainMenuBar();
         }
 
@@ -70,5 +82,11 @@ public class Program
 
         foreach (var widget in widgets)
             widget.Render();
+    }
+
+    public static void Update(float deltaSeconds)
+    {
+        foreach (var widget in widgets)
+            widget.Update(deltaSeconds);
     }
 }
