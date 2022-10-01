@@ -131,14 +131,14 @@ public static partial class UI
         CustomFail: () => ImGui.PushStyleColor(ImGuiCol.Text, ImGui.GetColorU32(ImGuiCol.Text)),
         Condition: Condition, Elements: Elements
     );
-    public static void WithStyles(WithFlags Flags, Func<bool>? Condition, (ImGuiStyleVar, dynamic)[] Colors, params Action[] Elements) => With(
+    public static void WithStyles(WithFlags Flags, Func<bool>? Condition, (ImGuiStyleVar, dynamic)[] Styles, params Action[] Elements) => With(
         Flags: new() { 
             Fail   = Flags.Fail   | WithFlags.FailFlags.CustomSkipEffect,
             Effect = Flags.Effect | WithFlags.EffectFlags.Before,
             Undo   = Flags.Undo   | WithFlags.EffectFlags.After
         },
-        Effect:     () => Array.ForEach(Colors, (c) => ImGui.PushStyleVar(c.Item1, c.Item2)),
-        UndoEffect: () => ImGui.PopStyleVar(Colors.Length),
+        Effect:     () => Array.ForEach(Styles, (c) => ImGui.PushStyleVar(c.Item1, c.Item2)),
+        UndoEffect: () => ImGui.PopStyleVar(Styles.Length),
         CustomFail: () => ImGui.PushStyleVar(ImGuiStyleVar.Alpha, ImGui.GetStyle().Alpha),
         Condition: Condition, Elements: Elements
     );

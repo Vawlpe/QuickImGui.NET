@@ -1,5 +1,6 @@
 using ImGuiNET;
 using System.Numerics;
+using System.Reflection;
 using VRBK = QuickImGuiNET.Veldrid;
 
 namespace QuickImGuiNET.Example.Veldrid;
@@ -54,6 +55,24 @@ public class Program
                 PositionCond = ImGuiCond.FirstUseEver,
                 IconRenderSize = new Vector2(512, 512)
             },
+            new Widgets.FileManager(backend) {
+                Visible = true,
+                RenderMode = WidgetRenderMode.Modal,
+                Name = "FileManager##example001",
+                Position = ImGui.GetMainViewport().GetWorkCenter() - new Vector2(250, 250),
+                Size = new Vector2(500, 500),
+                SizeCond = ImGuiCond.FirstUseEver,
+                PositionCond = ImGuiCond.FirstUseEver,
+                Mode = Widgets.FileManager.SelectionMode.OpenFile,
+                CurrentPath = Path.GetDirectoryName(Assembly.GetEntryAssembly()?.Location) ?? Path.GetFullPath("~"),
+                ShowHiddenFiles = true, ShowSystemFiles = true,
+                FileTypeQueries = new() {
+                    {"Images", new() { "*.png", "*.jpg", "*.jped" }},
+                    {"All",    new() { "*"                        }}
+                },
+                CurrentFTQuery = "All",
+                CloseCallback = (w) => Console.WriteLine($"Selected: {(w as Widgets.FileManager)?.Selected}")
+            }
         };
 
         backend.Run(Draw, UpdateCallback: Update);
