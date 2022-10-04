@@ -23,6 +23,7 @@ public static partial class Widgets {
 
         public override void RenderContent()
         {
+            //TODO Better path display and input
             ImGui.Text(CurrentPath);
             if (!ImGui.BeginListBox(String.Empty, ImGui.GetWindowContentRegionMax() - new Vector2(50, 75)))
                 return;
@@ -59,6 +60,7 @@ public static partial class Widgets {
                             CurrentPath = fi.FullName;
                             Selected = String.Empty;
                             RefreshFiles();
+                            //TODO ask user to confirm if saving
                         } else Close();
                         break;
                     }
@@ -79,6 +81,7 @@ public static partial class Widgets {
             Utils.UI.WithDisabled(new Utils.UI.WithFlags(),
                 () => Mode.HasFlag(SelectionMode.Folder) != File.Exists(Selected),
                 () => { if (ImGui.Button(Mode.HasFlag(SelectionMode.Save) ? "Save" : "Open")) {
+                            //TODO ask user to confirm if saving
                             if (Selected == String.Empty) {
                                 Selected = CurrentPath;
                                 Close();
