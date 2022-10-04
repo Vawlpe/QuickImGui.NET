@@ -1,44 +1,46 @@
 using ImGuiNET;
 using System.Numerics;
-using Timers = System.Timers;
 
 namespace QuickImGuiNET;
 
 public static partial class Widgets {
     public class FileManager : Widget
     {
-        public FileManager(Backend backend) : base() {
+        public FileManager(Backend backend, string ID) : base(backend, ID) {
             backend.Events["onMainMenuBar"]["Debug"].Hook += RenderOnMainMenuBar_Debug;
-            OnClose += CloseCallback;
-        } 
-        public string Selected;
+        }
+
+        public string Selected = String.Empty;
         public SelectionMode Mode;
         public string CurrentPath;
         public bool ShowHiddenFiles;
         public bool ShowSystemFiles;
         public Dictionary<string, List<string>> FileTypeQueries;
         public string CurrentFTQuery;
-        private DirectoryInfo[] FoldersFound;
-        private FileInfo[] FilesFound;
+
+        private DirectoryInfo[]? FoldersFound;
+        private FileInfo[]? FilesFound;
+
         public override void RenderContent()
         {
             ImGui.Text(CurrentPath);
-            if (!ImGui.BeginListBox(String.Empty, ImGui.GetWindowContentRegionMax() - new Vector2(50, 50)))
+            if (!ImGui.BeginListBox(String.Empty, ImGui.GetWindowContentRegionMax() - new Vector2(50, 75)))
                 return;
 
-            if (FilesFound is null || FoldersFound is null)
-                RefreshFiles();
-
-            if (Directory.Exists(Path.GetFullPath(Path.Combine(CurrentPath, ".."))) && ImGui.Selectable("..")) {
-                CurrentPath = Path.GetFullPath(Path.Combine(CurrentPath, ".."));
-                RefreshFiles();
-            }
-
             // File/dir list
-            if (FilesFound is null || FoldersFound is null)
+            if (FilesFound is null || FoldersFound is null) {
                 ImGui.Text($"Refreshing...");
-            else {
-                foreach (FileSystemInfo fi in FoldersFound.Concat((FileSystemInfo[])FilesFound)) {
+                RefreshFiles();
+            } else {
+                if (Directory.Exists(Path.GetFullPath(Path.Combine(CurrentPath, ".."))) && ImGui.Selectable("..")) {
+                    CurrentPath = Path.GetFullPath(Path.Combine(CurrentPath, ".."));
+                    RefreshFiles();
+                }
+
+                foreach (FileSystemInfo fi in FoldersFound.Concat(
+                        Mode.HasFlag(SelectionMode.Folder)
+                        ? new FileSystemInfo[] {}
+                        : (FileSystemInfo[])FilesFound)) {
                     ImGui.PushStyleColor(ImGuiCol.Text,
                         fi.Attributes.HasFlag(FileAttributes.Hidden)    ? 0xFF_AAAAAA :
                         fi.Attributes.HasFlag(FileAttributes.System)    ? 0xFF_5511CC :
@@ -46,23 +48,28 @@ public static partial class Widgets {
                         ImGui.GetColorU32(ImGuiCol.Text)
                     );
 
-                    if (ImGui.Selectable(fi.Name)
-                        && (fi.Attributes.HasFlag(FileAttributes.Directory)
-                            ? Mode.HasFlag(SelectionMode.Folder)
-                            : Mode.HasFlag(SelectionMode.File)))
+                    // Left-Click
+                    if (ImGui.Selectable(fi.Name, Selected == fi.FullName))
                         Selected = fi.FullName;
                     ImGui.PopStyleColor();
 
-                    //FIXME
-                    if (ImGui.IsMouseDoubleClicked(ImGuiMouseButton.Left))
+                    // Double-Click
+                    if (ImGui.IsItemHovered() && ImGui.IsMouseDoubleClicked(ImGuiMouseButton.Left)) { 
                         if (fi.Attributes.HasFlag(FileAttributes.Directory)) {
                             CurrentPath = fi.FullName;
+                            Selected = String.Empty;
                             RefreshFiles();
-                        }
-                        else Close();
+                        } else Close();
+                        break;
+                    }
+
+                    // Right-Click
+                    if (ImGui.IsMouseClicked(ImGuiMouseButton.Right)) 
+                        Selected = String.Empty;
                 }
                 ImGui.EndListBox();
             }
+
             // Buttons
             if (ImGui.Button("Cancel")) {
                 Selected = String.Empty;
@@ -70,19 +77,24 @@ public static partial class Widgets {
             }
             ImGui.SameLine();
             Utils.UI.WithDisabled(new Utils.UI.WithFlags(),
-                () => Selected == String.Empty,
-                () => {
-                    if (ImGui.Button(
-                            Mode.HasFlag(SelectionMode.Save)
-                            ? "Save" : "Open"))
-                        Close();
+                () => Mode.HasFlag(SelectionMode.Folder) != File.Exists(Selected),
+                () => { if (ImGui.Button(Mode.HasFlag(SelectionMode.Save) ? "Save" : "Open")) {
+                            if (Selected == String.Empty) {
+                                Selected = CurrentPath;
+                                Close();
+                            } else if (Directory.Exists(Selected)) {
+                                CurrentPath = Selected;
+                                Selected = String.Empty;
+                                RefreshFiles();
+                            }
+                        }
                 }
             );
         }
 
         public dynamic? RenderOnMainMenuBar_Debug(params dynamic[]? args)
         {
-            ImGui.MenuItem($"Open {Name}##{Name}", String.Empty, ref Visible);
+            ImGui.MenuItem($"Open {Name}", String.Empty, ref Visible);
             return null;
         }
         private void RefreshFiles()
@@ -97,8 +109,6 @@ public static partial class Widgets {
             FoldersFound = FSIs            .Where((x) => x.Attributes.HasFlag(FileAttributes.Directory)) .Select((d) => (DirectoryInfo)d).ToArray();
             FilesFound   = FSIs.Except(FSIs.Where((x) => x.Attributes.HasFlag(FileAttributes.Directory))).Select((f) => (FileInfo     )f).ToArray();
         }
-
-        public Action<Widget> CloseCallback;
 
         public enum SelectionMode
         {

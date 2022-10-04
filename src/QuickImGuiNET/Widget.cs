@@ -5,6 +5,7 @@ namespace QuickImGuiNET;
 
 public abstract class Widget
 {
+    public readonly string ID;
     public string Name = String.Empty;
     public Vector2 Size = Vector2.Zero;
     public Vector2 Position = Vector2.Zero;
@@ -13,6 +14,19 @@ public abstract class Widget
     public bool Visible = false;
     private bool _visible = false;
     public WidgetRenderMode RenderMode = WidgetRenderMode.Raw;
+
+    private Backend backend;
+    public Widget(Backend backend, string? ID)
+    {
+        this.ID = ID ?? $"{DateTime.UtcNow.ToBinary()}";
+        this.backend = backend;
+        backend.Events["widgetReg"].Children.Add(this.ID, new(new() {
+            { "open", new() },
+            { "close", new() },
+            { "toggle", new() }
+        }));
+    }
+
     public abstract void RenderContent();
     public virtual void Update(float delta) {}
     public void Render(bool? border = null, ImGuiWindowFlags? flags = null)
@@ -23,7 +37,7 @@ public abstract class Widget
             else Close();
             _visible = Visible;
         }
-        
+
         // Render
         switch (RenderMode)
         {
@@ -34,7 +48,7 @@ public abstract class Widget
             case WidgetRenderMode.Window:
                 RenderInWindow(flags ?? ImGuiWindowFlags.None);
                 break;
-            
+
             case WidgetRenderMode.Child:
                 RenderInChild(border ?? false, flags ?? ImGuiWindowFlags.None);
                 break;
@@ -42,7 +56,7 @@ public abstract class Widget
             case WidgetRenderMode.Popup:
                 RenderInPopup(flags ?? ImGuiWindowFlags.None);
                 break;
-            
+
             case WidgetRenderMode.Modal:
                 RenderInModal(flags ?? ImGuiWindowFlags.None);
                 break;
@@ -96,7 +110,7 @@ public abstract class Widget
 
         if (!Visible && ImGui.IsPopupOpen(Name))
             ImGui.CloseCurrentPopup();
-        
+
         RenderContent();
         ImGui.End();
     }
@@ -104,25 +118,22 @@ public abstract class Widget
     public void Open()
     {
         Visible = true;
-        OnOpen(this);
+        backend.Events["widgetReg"][ID]["open"].Invoke(new dynamic[] {this});
     }
     public void Close()
     {
         Visible = false;
-        OnClose(this);
+        backend.Events["widgetReg"][ID]["close"].Invoke(new dynamic[] {this});
     }
     public void Toggle()
     {
         Visible = !Visible;
         if (Visible)
-            OnOpen(this);
+            backend.Events["widgetReg"][ID]["close"].Invoke(new dynamic[] {this});
         else
-            OnClose(this);
-        OnToggle(this);
+            backend.Events["widgetReg"][ID]["open"].Invoke(new dynamic[] {this});
+        backend.Events["widgetReg"][ID]["toggle"].Invoke(new dynamic[] {this});
     }
-    public event Action<Widget> OnOpen = delegate { };
-    public event Action<Widget> OnClose = delegate { };
-    public event Action<Widget> OnToggle = delegate { };
 }
 
 public enum WidgetRenderMode

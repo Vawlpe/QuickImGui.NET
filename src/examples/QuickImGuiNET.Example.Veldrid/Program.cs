@@ -9,6 +9,7 @@ public class Program
 {
     public static readonly string[] defaultArgs = new string[] { "1280", "720", "-1" };
     public static VRBK.Backend backend;
+
     public static void Main(string[] args)
     {
         if (args.Length != defaultArgs.Length)
@@ -19,9 +20,10 @@ public class Program
 
         backend = new VRBK.Backend(width, height, veldridBackendIndex);
         backend.Events = new() {
-            {"onMainMenuBar", new(new() {
-                {"Debug", new()}
-            })}
+            { "onMainMenuBar", new(new() {
+                { "Debug", new() }
+            })},
+            { "widgetReg", new() }
         };
 
         widgets = new() {
@@ -55,7 +57,7 @@ public class Program
                 PositionCond = ImGuiCond.FirstUseEver,
                 IconRenderSize = new Vector2(512, 512)
             },
-            new Widgets.FileManager(backend) {
+            new Widgets.FileManager(backend, "TestFMgr420") {
                 Visible = true,
                 RenderMode = WidgetRenderMode.Modal,
                 Name = "FileManager##example001",
@@ -63,23 +65,25 @@ public class Program
                 Size = new Vector2(500, 500),
                 SizeCond = ImGuiCond.FirstUseEver,
                 PositionCond = ImGuiCond.FirstUseEver,
-                Mode = Widgets.FileManager.SelectionMode.OpenFile,
+                Mode = Widgets.FileManager.SelectionMode.OpenFolder,
                 CurrentPath = Path.GetDirectoryName(Assembly.GetEntryAssembly()?.Location) ?? Path.GetFullPath("~"),
                 ShowHiddenFiles = true, ShowSystemFiles = true,
                 FileTypeQueries = new() {
-                    {"Images", new() { "*.png", "*.jpg", "*.jped" }},
+                    {"Images", new() { "*.png", "*.jpg", "*.jpeg" }},
                     {"All",    new() { "*"                        }}
                 },
-                CurrentFTQuery = "All",
-                CloseCallback = (w) => Console.WriteLine($"Selected: {(w as Widgets.FileManager)?.Selected}")
+                CurrentFTQuery = "All"
             }
         };
+
+        backend.Events["widgetReg"]["TestFMgr420"]["close"].Hook += (fm) => { Console.WriteLine(fm?[0].Selected); return null; };
 
         backend.Run(Draw, UpdateCallback: Update);
     }
 
     public static bool showDemoWindow = false;
     public static List<Widget> widgets = new();
+
     public static void Draw()
     {
         ImGui.DockSpaceOverViewport();
@@ -91,7 +95,7 @@ public class Program
                 backend.Events["onMainMenuBar"]["Debug"].Invoke();
                 ImGui.EndMenu();
             }
-            
+
             backend.Events["onMainMenuBar"].Invoke();
             ImGui.EndMainMenuBar();
         }
