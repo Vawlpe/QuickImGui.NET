@@ -14,7 +14,7 @@ public class ExampleWidget : Widget
     public int TestDragVal;
     public float TestCountdown = 0;
     public int TestCooldownMult;
-    public ExampleWidget(Backend backend) : base()
+    public ExampleWidget(Backend backend) : base(backend, null)
     {
         backend.Events["onMainMenuBar"]["Debug"].Hook += RenderOnMainMenuBar_Debug;
         IconTexture = Texture.Bind(Path.Combine(Path.GetDirectoryName(Assembly.GetEntryAssembly()?.Location) ?? String.Empty, "Icon.png"), Program.backend);
