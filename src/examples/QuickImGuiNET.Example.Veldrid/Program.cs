@@ -65,7 +65,7 @@ public class Program
                 Size = new Vector2(500, 500),
                 SizeCond = ImGuiCond.FirstUseEver,
                 PositionCond = ImGuiCond.FirstUseEver,
-                Mode = Widgets.FileManager.SelectionMode.OpenFolder,
+                Mode = Widgets.FileManager.SelectionMode.OpenFile,
                 CurrentPath = Path.GetDirectoryName(Assembly.GetEntryAssembly()?.Location) ?? Path.GetFullPath("~"),
                 ShowHiddenFiles = true, ShowSystemFiles = true,
                 FileTypeQueries = new() {
