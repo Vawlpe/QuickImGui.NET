@@ -5,31 +5,35 @@ namespace QuickImGuiNET;
 
 public abstract class Widget
 {
-    public readonly string ID;
-    public string Name = String.Empty;
+    public readonly string Name;
     public Vector2 Size = Vector2.Zero;
     public Vector2 Position = Vector2.Zero;
     public ImGuiCond PositionCond = ImGuiCond.Always;
     public ImGuiCond SizeCond = ImGuiCond.Always;
-    public bool Visible = false;
-    private bool _visible = false;
+    public ImGuiWindowFlags WindowFlags = ImGuiWindowFlags.None;
     public WidgetRenderMode RenderMode = WidgetRenderMode.Raw;
+    public bool Visible;
+    public bool ChildBorder;
+    private bool _visible;
 
     private Backend backend;
-    public Widget(Backend backend, string? ID)
+    public Widget(Backend backend, string? Name = null, bool AutoRegister = true)
     {
-        this.ID = ID ?? $"{DateTime.UtcNow.ToBinary()}";
+        this.Name = Name ?? $"{DateTime.UtcNow.ToBinary()}";
+        if (AutoRegister) {
+            backend.Events["widgetReg"].Children.Add(this.Name, new(new() {
+                { "open", new() },
+                { "close", new() },
+                { "toggle", new() }
+            }));
+            backend.WidgetReg.Add(Name ?? $"{DateTime.UtcNow.Millisecond}", this);
+        }
         this.backend = backend;
-        backend.Events["widgetReg"].Children.Add(this.ID, new(new() {
-            { "open", new() },
-            { "close", new() },
-            { "toggle", new() }
-        }));
     }
 
     public abstract void RenderContent();
     public virtual void Update(float delta) {}
-    public void Render(bool? border = null, ImGuiWindowFlags? flags = null)
+    public void Render()
     {
         // Detect direct visibility changes and trigger appropriate event
         if (_visible != Visible) {
@@ -39,77 +43,60 @@ public abstract class Widget
         }
 
         // Render
-        switch (RenderMode)
-        {
-            case WidgetRenderMode.Raw:
-                RenderContent();
-                break;
-
-            case WidgetRenderMode.Window:
-                RenderInWindow(flags ?? ImGuiWindowFlags.None);
-                break;
-
-            case WidgetRenderMode.Child:
-                RenderInChild(border ?? false, flags ?? ImGuiWindowFlags.None);
-                break;
-
-            case WidgetRenderMode.Popup:
-                RenderInPopup(flags ?? ImGuiWindowFlags.None);
-                break;
-
-            case WidgetRenderMode.Modal:
-                RenderInModal(flags ?? ImGuiWindowFlags.None);
-                break;
+        Action renderFunc = RenderMode switch {
+            WidgetRenderMode.Window => () => RenderInWindow(),
+            WidgetRenderMode.Child  => () => RenderInChild(),
+            WidgetRenderMode.Popup  => () => RenderInPopup(),
+            WidgetRenderMode.Modal  => () => RenderInModal(),
+            _                       => () => RenderContent(),
         };
+        renderFunc.Invoke();
     }
-    public void RenderInChild(bool border, ImGuiWindowFlags flags = ImGuiWindowFlags.None)
+    public void RenderInChild()
     {
         ImGui.SetCursorPos(Position);
-        if (!Visible || !ImGui.BeginChild(Name, Size, border, flags))
+        if (!Visible || !ImGui.BeginChild(Name, Size, ChildBorder, WindowFlags))
             return;
 
         RenderContent();
         ImGui.EndChildFrame();
     }
-    public void RenderInWindow(ImGuiWindowFlags flags = ImGuiWindowFlags.None)
+    public void RenderInWindow()
     {
         ImGui.SetNextWindowSize(Size, SizeCond);
         ImGui.SetNextWindowPos(Position, PositionCond);
-        if (!Visible || !ImGui.Begin(Name, ref Visible, flags))
+        if (!Visible || !ImGui.Begin(Name, ref Visible, WindowFlags))
             return;
 
         RenderContent();
         ImGui.End();
     }
-    public void RenderInPopup(ImGuiWindowFlags flags = ImGuiWindowFlags.None)
+    public void RenderInPopup()
     {
-        if (Visible && !ImGui.IsPopupOpen(Name))
-            ImGui.OpenPopup(Name);
+        if (Visible != ImGui.IsPopupOpen(Name))
+            if (Visible)
+                 ImGui.OpenPopup(Name);
+            else ImGui.CloseCurrentPopup();
 
         ImGui.SetNextWindowSize(Size, SizeCond);
         ImGui.SetNextWindowPos(Position, PositionCond);
-        if (!Visible || !ImGui.BeginPopup(Name, flags))
+        if (!Visible || !ImGui.BeginPopup(Name, WindowFlags))
             return;
-
-        if (!Visible && ImGui.IsPopupOpen(Name))
-            ImGui.CloseCurrentPopup();
 
         RenderContent();
         ImGui.EndPopup();
     }
-
-    public void RenderInModal(ImGuiWindowFlags flags = ImGuiWindowFlags.None)
+    public void RenderInModal()
     {
-        if (Visible && !ImGui.IsPopupOpen(Name))
-            ImGui.OpenPopup(Name);
+        if (Visible != ImGui.IsPopupOpen(Name))
+            if (Visible)
+                 ImGui.OpenPopup(Name);
+            else ImGui.CloseCurrentPopup();
 
         ImGui.SetNextWindowSize(Size, SizeCond);
         ImGui.SetNextWindowPos(Position, PositionCond);
-        if (!Visible || !ImGui.BeginPopupModal(Name, ref Visible, flags))
+        if (!Visible || !ImGui.BeginPopupModal(Name, ref Visible, WindowFlags))
             return;
-
-        if (!Visible && ImGui.IsPopupOpen(Name))
-            ImGui.CloseCurrentPopup();
 
         RenderContent();
         ImGui.End();
@@ -118,21 +105,21 @@ public abstract class Widget
     public void Open()
     {
         Visible = true;
-        backend.Events["widgetReg"][ID]["open"].Invoke(new dynamic[] {this});
+        backend.Events["widgetReg"][Name]["open"].Invoke(this);
     }
     public void Close()
     {
         Visible = false;
-        backend.Events["widgetReg"][ID]["close"].Invoke(new dynamic[] {this});
+        backend.Events["widgetReg"][Name]["close"].Invoke(this);
     }
     public void Toggle()
     {
         Visible = !Visible;
         if (Visible)
-            backend.Events["widgetReg"][ID]["close"].Invoke(new dynamic[] {this});
+            backend.Events["widgetReg"][Name]["close"].Invoke(this);
         else
-            backend.Events["widgetReg"][ID]["open"].Invoke(new dynamic[] {this});
-        backend.Events["widgetReg"][ID]["toggle"].Invoke(new dynamic[] {this});
+            backend.Events["widgetReg"][Name]["open"].Invoke(this);
+        backend.Events["widgetReg"][Name]["toggle"].Invoke(this);
     }
 }
 

@@ -20,4 +20,5 @@ public abstract class Backend
     public Dictionary<IntPtr, dynamic> Textures = new();
     public (IntPtr ID, dynamic Texture) FontTexture;
     public Dictionary<string, Event> Events = new();
+    public Dictionary<string, Widget> WidgetReg = new();
 }

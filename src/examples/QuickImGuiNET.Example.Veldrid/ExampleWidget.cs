@@ -14,14 +14,15 @@ public class ExampleWidget : Widget
     public int TestDragVal;
     public float TestCountdown = 0;
     public int TestCooldownMult;
-    public ExampleWidget(Backend backend) : base(backend, null)
+    public ExampleWidget(Backend backend, string? Name, bool AutoRegister = true) : base(backend, Name, AutoRegister)
     {
         backend.Events["onMainMenuBar"]["Debug"].Hook += RenderOnMainMenuBar_Debug;
+        backend.Events["widgetReg"][this.Name]["close"].Hook += (ex) => { Console.WriteLine(ex?[0].Name); return null; };
         IconTexture = Texture.Bind(Path.Combine(Path.GetDirectoryName(Assembly.GetEntryAssembly()?.Location) ?? String.Empty, "Icon.png"), Program.backend);
     }
     public dynamic? RenderOnMainMenuBar_Debug(params dynamic[]? args)
     {
-        ImGui.MenuItem($"Open {Name}##{Name}", string.Empty, ref Visible);
+        ImGui.MenuItem($"Open {Name.Replace("#", @"\#")}", string.Empty, ref Visible);
         return null;
     }
     public override void RenderContent()

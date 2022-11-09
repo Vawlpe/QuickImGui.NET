@@ -3,11 +3,41 @@ using System.Numerics;
 
 namespace QuickImGuiNET;
 
-public static partial class Widgets {
+public static partial class Widgets
+{
     public class FileManager : Widget
     {
-        public FileManager(Backend backend, string ID) : base(backend, ID) {
+        public FileManager(Backend backend, string Name, bool AutoRegister = true) : base(backend, Name, AutoRegister)
+        {
             backend.Events["onMainMenuBar"]["Debug"].Hook += RenderOnMainMenuBar_Debug;
+            //backend.Events["widgetReg"][Name]["close"].Hook += (fm) => { Console.WriteLine($"Selected {fm?[0].Selected}"); return null; };
+            
+            //Create ConfirmPrompt Widget w/o auto-registration
+            Prompt = new ConfirmPrompt(backend, $"{Name}_ConfirmPrompt001", false) {
+                Visible       = false,
+                RenderMode    = WidgetRenderMode.Modal,
+                Position      = ImGui.GetMainViewport().GetWorkCenter() - new Vector2(150, 50),
+                PositionCond  = ImGuiCond.Appearing,
+                WindowFlags   = ImGuiWindowFlags.NoResize | ImGuiWindowFlags.AlwaysAutoResize,
+                Size          = new(300, 100),
+                //FIXME: Calling .Close() instead of manually setting Visible triggers
+                //      the event twice, perhaps a quirk with Widget.RenderInModal() ?
+                OkHandler     = () => backend.WidgetReg[Name].Visible = false,
+                CancelHandler = () => {},
+                Prompt        = "A file with that path already exists, are you sure you want to save over it?",
+                ButtonOK      = "Save",
+                ButtonCancel  = "Cancel"
+            };
+            //Manually register events for prompt, we only need "close" but if all 3 aren't registered it'll complain
+            backend.Events["widgetReg"].Children.Add($"{Name}_ConfirmPrompt001",
+                new(new() {
+                    { "open", new() },
+                    { "close", new() },
+                    { "toggle", new() }
+                }));
+            backend.Events["widgetReg"][$"{Name}_ConfirmPrompt001"]["close"].Hook += (p) => { (p?[0].OkOrCancel ? p?[0].OkHandler : p?[0].CancelHandler)?.Invoke(); return null; };
+            
+            this.backend = backend;
         }
 
         public string Selected = String.Empty;
@@ -20,6 +50,8 @@ public static partial class Widgets {
 
         private DirectoryInfo[]? FoldersFound;
         private FileInfo[]? FilesFound;
+        private readonly Backend backend;
+        private ConfirmPrompt Prompt;
 
         public override void RenderContent()
         {
@@ -60,8 +92,9 @@ public static partial class Widgets {
                             CurrentPath = fi.FullName;
                             Selected = String.Empty;
                             RefreshFiles();
-                            //TODO ask user to confirm if saving
-                        } else Close();
+                        } else if (Mode.HasFlag(SelectionMode.Save)) 
+                             Prompt.Open();
+                        else Close();
                         break;
                     }
 
@@ -78,26 +111,29 @@ public static partial class Widgets {
                 Close();
             }
             ImGui.SameLine();
-            Utils.UI.WithDisabled(new Utils.UI.WithFlags(),
-                () => Mode.HasFlag(SelectionMode.Folder) != File.Exists(Selected),
-                () => { if (ImGui.Button(Mode.HasFlag(SelectionMode.Save) ? "Save" : "Open")) {
-                            //TODO ask user to confirm if saving
-                            if (Selected == String.Empty) {
-                                Selected = CurrentPath;
-                                Close();
-                            } else if (Directory.Exists(Selected)) {
-                                CurrentPath = Selected;
-                                Selected = String.Empty;
-                                RefreshFiles();
-                            }
-                        }
-                }
-            );
+            ImGui.BeginDisabled(Selected != String.Empty);
+            if (ImGui.Button(Mode.HasFlag(SelectionMode.Save) ? "Save" : "Open")) {
+                if (Directory.Exists(Selected)) {
+                    CurrentPath = Selected;
+                    Selected = String.Empty;
+                    RefreshFiles();
+                } else if (Mode.HasFlag(SelectionMode.Save))
+                        Prompt.Open();
+                else Close();
+            }
+            ImGui.EndDisabled();
+
+            //TODO "CurrentFTQuery" Dropdown
+            
+            // Render the confirmation prompt inside this one so they stack properly
+            // This would break if the prompt was auto-registered to backend.WidgetReg
+            // as that would try to draw the confirmation prompt on it's own instead of here
+            Prompt.Render();
         }
 
         public dynamic? RenderOnMainMenuBar_Debug(params dynamic[]? args)
         {
-            ImGui.MenuItem($"Open {Name}", String.Empty, ref Visible);
+            ImGui.MenuItem($"Open {Name.Replace("#", @"\#")}", String.Empty, ref Visible);
             return null;
         }
         private void RefreshFiles()

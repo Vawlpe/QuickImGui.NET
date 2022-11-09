@@ -19,6 +19,7 @@ public class Program
         int veldridBackendIndex = int.Parse(args[2]);
 
         backend = new VRBK.Backend(width, height, veldridBackendIndex);
+        
         backend.Events = new() {
             { "onMainMenuBar", new(new() {
                 { "Debug", new() }
@@ -26,63 +27,47 @@ public class Program
             { "widgetReg", new() }
         };
 
-        widgets = new() {
-            new ExampleWidget(backend) {
-                Visible = true,
-                RenderMode = WidgetRenderMode.Window,
-                Name = "ExampleWidget##example001",
-                Position = new Vector2(100, 100),
-                Size = new Vector2(150, 200),
-                SizeCond = ImGuiCond.FirstUseEver,
-                PositionCond = ImGuiCond.FirstUseEver,
-                IconRenderSize = new Vector2(128, 128)
-            },
-            new ExampleWidget(backend) {
-                Visible = true,
-                RenderMode = WidgetRenderMode.Window,
-                Name = "ExampleWidget##example002",
-                Position = new Vector2(100, 310),
-                Size = new Vector2(275, 320),
-                SizeCond = ImGuiCond.FirstUseEver,
-                PositionCond = ImGuiCond.FirstUseEver,
-                IconRenderSize = new Vector2(256, 256)
-            },
-            new ExampleWidget(backend) {
-                Visible = true,
-                RenderMode = WidgetRenderMode.Window,
-                Name = "ExampleWidget##example003",
-                Position = new Vector2(100, 100),
-                Size = new Vector2(150, 200),
-                SizeCond = ImGuiCond.FirstUseEver,
-                PositionCond = ImGuiCond.FirstUseEver,
-                IconRenderSize = new Vector2(512, 512)
-            },
-            new Widgets.FileManager(backend, "TestFMgr420") {
-                Visible = true,
-                RenderMode = WidgetRenderMode.Modal,
-                Name = "FileManager##example001",
-                Position = ImGui.GetMainViewport().GetWorkCenter() - new Vector2(250, 250),
-                Size = new Vector2(500, 500),
-                SizeCond = ImGuiCond.FirstUseEver,
-                PositionCond = ImGuiCond.FirstUseEver,
-                Mode = Widgets.FileManager.SelectionMode.OpenFile,
-                CurrentPath = Path.GetDirectoryName(Assembly.GetEntryAssembly()?.Location) ?? Path.GetFullPath("~"),
-                ShowHiddenFiles = true, ShowSystemFiles = true,
-                FileTypeQueries = new() {
-                    {"Images", new() { "*.png", "*.jpg", "*.jpeg" }},
-                    {"All",    new() { "*"                        }}
-                },
-                CurrentFTQuery = "All"
-            }
+        backend.WidgetReg = new() {};
+        new ExampleWidget(backend, "ExampleWidget##example001") {
+            Visible        = true,
+            RenderMode     = WidgetRenderMode.Window,
+            Position       = new(100, 100),
+            Size           = new(150, 200),
+            SizeCond       = ImGuiCond.FirstUseEver,
+            PositionCond   = ImGuiCond.FirstUseEver,
+            IconRenderSize = new(128, 128)
         };
-
-        backend.Events["widgetReg"]["TestFMgr420"]["close"].Hook += (fm) => { Console.WriteLine(fm?[0].Selected); return null; };
+        new ExampleWidget(backend, "ExampleWidget##example002") {
+            Visible        = true,
+            RenderMode     = WidgetRenderMode.Window,
+            Position       = new(100, 310),
+            Size           = new(275, 320),
+            SizeCond       = ImGuiCond.FirstUseEver,
+            PositionCond   = ImGuiCond.FirstUseEver,
+            IconRenderSize = new(256, 256)
+        };
+        new Widgets.FileManager(backend, "FileManager##example001") {
+            Visible         = false,
+            RenderMode      = WidgetRenderMode.Modal,
+            Position        = ImGui.GetMainViewport().GetWorkCenter() - new Vector2(250, 250),
+            Size            = new(500, 500),
+            SizeCond        = ImGuiCond.FirstUseEver,
+            PositionCond    = ImGuiCond.FirstUseEver,
+            Mode            = Widgets.FileManager.SelectionMode.SaveFile,
+            CurrentPath     = Path.GetDirectoryName(Assembly.GetEntryAssembly()?.Location) ?? Path.GetFullPath("~"),
+            ShowHiddenFiles = true,
+            ShowSystemFiles = true,
+            FileTypeQueries = new() {
+                {"Images", new() { "*.png", "*.jpg", "*.jpeg" }},
+                {"All",    new() { "*"                        }}
+            },
+            CurrentFTQuery  = "All"
+        };
 
         backend.Run(Draw, UpdateCallback: Update);
     }
 
     public static bool showDemoWindow = false;
-    public static List<Widget> widgets = new();
 
     public static void Draw()
     {
@@ -103,13 +88,13 @@ public class Program
         if (showDemoWindow)
             ImGui.ShowDemoWindow(ref showDemoWindow);
 
-        foreach (var widget in widgets)
+        foreach (var widget in backend.WidgetReg.Values)
             widget.Render();
     }
 
     public static void Update(float deltaSeconds)
     {
-        foreach (var widget in widgets)
+        foreach (var widget in backend.WidgetReg.Values)
             widget.Update(deltaSeconds);
     }
 }
