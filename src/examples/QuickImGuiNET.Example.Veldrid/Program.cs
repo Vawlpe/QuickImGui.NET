@@ -32,7 +32,7 @@ public class Program
             Visible        = true,
             RenderMode     = WidgetRenderMode.Window,
             Position       = new(100, 100),
-            Size           = new(150, 200),
+            Size           = new(150, 150),
             SizeCond       = ImGuiCond.FirstUseEver,
             PositionCond   = ImGuiCond.FirstUseEver,
             IconRenderSize = new(128, 128)
@@ -40,8 +40,8 @@ public class Program
         new ExampleWidget(backend, "ExampleWidget##example002") {
             Visible        = true,
             RenderMode     = WidgetRenderMode.Window,
-            Position       = new(100, 310),
-            Size           = new(275, 320),
+            Position       = new(250, 100),
+            Size           = new(275, 275),
             SizeCond       = ImGuiCond.FirstUseEver,
             PositionCond   = ImGuiCond.FirstUseEver,
             IconRenderSize = new(256, 256)
@@ -58,8 +58,8 @@ public class Program
             ShowHiddenFiles = true,
             ShowSystemFiles = true,
             FileTypeQueries = new() {
-                {"Images", new() { "*.png", "*.jpg", "*.jpeg" }},
-                {"All",    new() { "*"                        }}
+                {"Images", new() { ".png", ".jpg", ".jpeg" }},
+                {"All",    new() { "*"                  }}
             },
             CurrentFTQuery  = "All"
         };
