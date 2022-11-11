@@ -28,7 +28,7 @@ public class Program
         };
 
         backend.WidgetReg = new() {};
-        new ExampleWidget(backend, "ExampleWidget##example001") {
+        new ExampleWidget(backend, "ExampleWidget##example00") {
             Visible        = true,
             RenderMode     = WidgetRenderMode.Window,
             Position       = new(100, 100),
@@ -37,16 +37,16 @@ public class Program
             PositionCond   = ImGuiCond.FirstUseEver,
             IconRenderSize = new(128, 128)
         };
-        new ExampleWidget(backend, "ExampleWidget##example002") {
+        new ExampleWidget(backend, "ExampleWidget##example01") {
             Visible        = true,
             RenderMode     = WidgetRenderMode.Window,
-            Position       = new(250, 100),
+            Position       = new(255, 100),
             Size           = new(275, 275),
             SizeCond       = ImGuiCond.FirstUseEver,
             PositionCond   = ImGuiCond.FirstUseEver,
             IconRenderSize = new(256, 256)
         };
-        new Widgets.FileManager(backend, "FileManager##example001") {
+        new Widgets.FileManager(backend, "FileManager##example00") {
             Visible         = false,
             RenderMode      = WidgetRenderMode.Modal,
             Position        = ImGui.GetMainViewport().GetWorkCenter() - new Vector2(250, 250),
@@ -62,6 +62,14 @@ public class Program
                 {"All",    new() { "*"                  }}
             },
             CurrentFTQuery  = "All"
+        };
+        new Widgets.MemoryView(backend, "MemoryView##example00") {
+            Visible         = false,
+            RenderMode      = WidgetRenderMode.Window,
+            Position        = new(100, 380),
+            Size            = new(430, 300),
+            SizeCond        = ImGuiCond.FirstUseEver,
+            PositionCond    = ImGuiCond.FirstUseEver
         };
 
         backend.Run(Draw, UpdateCallback: Update);

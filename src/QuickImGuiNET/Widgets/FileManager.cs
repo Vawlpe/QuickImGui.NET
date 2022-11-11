@@ -10,8 +10,7 @@ public static partial class Widgets
         public FileManager(Backend backend, string Name, bool AutoRegister = true) : base(backend, Name, AutoRegister)
         {
             backend.Events["onMainMenuBar"]["Debug"].Hook += RenderOnMainMenuBar_Debug;
-            //backend.Events["widgetReg"][Name]["close"].Hook += (fm) => { Console.WriteLine($"Selected {fm?[0].Selected}"); return null; };
-            
+
             //Create ConfirmPrompt Widget w/o auto-registration
             Prompt = new ConfirmPrompt(backend, $"{Name}_ConfirmPrompt001", false) {
                 Visible       = false,
@@ -28,6 +27,7 @@ public static partial class Widgets
                 ButtonOK      = "Save",
                 ButtonCancel  = "Cancel"
             };
+            
             //Manually register events for prompt, we only need "close" but if all 3 aren't registered it'll complain
             backend.Events["widgetReg"].Children.Add($"{Name}_ConfirmPrompt001",
                 new(new() {
