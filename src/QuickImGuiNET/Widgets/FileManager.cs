@@ -36,8 +36,6 @@ public static partial class Widgets
                     { "toggle", new() }
                 }));
             backend.Events["widgetReg"][$"{Name}_ConfirmPrompt001"]["close"].Hook += (p) => { (p?[0].OkOrCancel ? p?[0].OkHandler : p?[0].CancelHandler)?.Invoke(); return null; };
-            
-            this.backend = backend;
         }
 
         public string Selected = String.Empty;
@@ -50,13 +48,12 @@ public static partial class Widgets
 
         private DirectoryInfo[]? FoldersFound;
         private FileInfo[]? FilesFound;
-        private readonly Backend backend;
         private ConfirmPrompt Prompt;
 
         public override void RenderContent()
         {
             //TODO Better path display and input
-            ImGui.Text($"{CurrentPath.Substring(0, Math.Min(64, CurrentPath.Length))}{(CurrentPath.Length > 64 ? "..." : String.Empty)}");
+            ImGui.Text($"{CurrentPath[..Math.Min(64, CurrentPath.Length)]}{(CurrentPath.Length > 64 ? "..." : String.Empty)}");
             if (!ImGui.BeginListBox(String.Empty, ImGui.GetWindowContentRegionMax() - new Vector2(50, 75) * new Vector2(-1, 1)))
                 return;
 
@@ -70,10 +67,10 @@ public static partial class Widgets
                     RefreshFiles();
                 }
 
-                foreach (FileSystemInfo fi in FoldersFound.Concat(
+                foreach (var fi in FoldersFound.Concat(
                         Mode.HasFlag(SelectionMode.Folder)
                         ? new FileSystemInfo[] {}
-                        : (FileSystemInfo[])FilesFound)) {
+                        : FilesFound)) {
                     ImGui.PushStyleColor(ImGuiCol.Text,
                         fi.Attributes.HasFlag(FileAttributes.Hidden)    ? 0xFF_AAAAAA :
                         fi.Attributes.HasFlag(FileAttributes.System)    ? 0xFF_5511CC :
@@ -127,12 +124,15 @@ public static partial class Widgets
             // File type filter
             ImGui.SameLine(ImGui.GetWindowSize().X/2);
             ImGui.PushItemWidth(-5);
-            if (ImGui.BeginCombo(String.Empty, $"{CurrentFTQuery} ({String.Join(", ", FileTypeQueries[CurrentFTQuery])})", ImGuiComboFlags.HeightSmall)) {
-                foreach (var ftq in this.FileTypeQueries)
-                    if (ImGui.Selectable($"{ftq.Key} ({String.Join(", ", ftq.Value)})")) {
-                        CurrentFTQuery = ftq.Key;
-                        RefreshFiles();
-                    }
+            if (ImGui.BeginCombo(String.Empty, $"{CurrentFTQuery} ({String.Join(", ", FileTypeQueries[CurrentFTQuery])})", ImGuiComboFlags.HeightSmall))
+            {
+                foreach (var ftq in FileTypeQueries
+                             .Where(ftq => ImGui.Selectable($"{ftq.Key} ({String.Join(", ", ftq.Value)})")))
+                {
+                    CurrentFTQuery = ftq.Key;
+                    RefreshFiles();
+                }
+
                 ImGui.EndCombo();
             }
             
@@ -142,7 +142,7 @@ public static partial class Widgets
             Prompt.Render();
         }
 
-        public dynamic? RenderOnMainMenuBar_Debug(params dynamic[]? args)
+        private dynamic? RenderOnMainMenuBar_Debug(params dynamic[]? args)
         {
             ImGui.MenuItem($"Open {Name.Replace("#", @"\#")}", String.Empty, ref Visible);
             return null;
@@ -160,7 +160,7 @@ public static partial class Widgets
             FoldersFound =             dirFSIs .Select((d) => (DirectoryInfo)d).OrderBy((f) => f.Name[0]).ToArray();
             FilesFound   = FSIs.Except(dirFSIs).Select((f) => (FileInfo     )f).OrderBy((d) => d.Name[0]).ToArray();
 
-            if (!FileTypeQueries[CurrentFTQuery].Any((q) => q == "*"))
+            if (FileTypeQueries[CurrentFTQuery].All(q => q != "*"))
                 FilesFound = FilesFound.Where((fsi) => FileTypeQueries[CurrentFTQuery].Contains(fsi.Extension.ToLowerInvariant())).ToArray();
         }
 
