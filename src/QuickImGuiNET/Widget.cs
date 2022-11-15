@@ -16,7 +16,7 @@ public abstract class Widget
     public bool ChildBorder;
     private bool _visible;
 
-    private Backend backend;
+    protected Backend backend;
     public Widget(Backend backend, string? Name = null, bool AutoRegister = true)
     {
         this.Name = Name ?? $"{DateTime.UtcNow.ToBinary()}";
@@ -33,7 +33,7 @@ public abstract class Widget
 
     public abstract void RenderContent();
     public virtual void Update(float delta) {}
-    public void Render()
+    public virtual void Render()
     {
         // Detect direct visibility changes and trigger appropriate event
         if (_visible != Visible) {

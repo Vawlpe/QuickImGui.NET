@@ -195,7 +195,7 @@ public class Backend : QuickImGuiNET.Backend, IDisposable
         _gd.WaitForIdle();
         Dispose();
         _cl.Dispose();
-        _gd.Dispose();
+        //_gd.Dispose(); // For some reason the process hangs on this line  
         SDL2Extensions.SDL_FreeSurface.Invoke(_icon);
     }
 

@@ -1,6 +1,9 @@
 # ImGui Layout Config
 **/imgui.ini
 
+# JetBrains
+.idea/
+
 # VSCode
 .vscode/
 

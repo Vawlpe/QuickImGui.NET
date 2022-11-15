@@ -1,0 +1,34 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ImGui.NET", "ImGui.NET\src\ImGui.NET\ImGui.NET.csproj", "{F7C7ECD3-3E9D-4A49-9C75-EF7ED15D363C}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "QuickImGuiNET", "QuickImGuiNET\QuickImGuiNET.csproj", "{76034596-8AE9-432C-A160-E836AF07FEED}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "QuickImGuiNET.Veldrid", "QuickImGuiNET.Veldrid\QuickImGuiNET.Veldrid.csproj", "{42BB280B-57F7-4E59-A05F-A7E6F62377C2}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "QuickImGuiNET.Example.Veldrid", "examples\QuickImGuiNET.Example.Veldrid\QuickImGuiNET.Example.Veldrid.csproj", "{F8BB6790-D712-4C49-AC25-47CFFFE160E3}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{F7C7ECD3-3E9D-4A49-9C75-EF7ED15D363C}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{F7C7ECD3-3E9D-4A49-9C75-EF7ED15D363C}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{F7C7ECD3-3E9D-4A49-9C75-EF7ED15D363C}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{F7C7ECD3-3E9D-4A49-9C75-EF7ED15D363C}.Release|Any CPU.Build.0 = Release|Any CPU
+		{76034596-8AE9-432C-A160-E836AF07FEED}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{76034596-8AE9-432C-A160-E836AF07FEED}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{76034596-8AE9-432C-A160-E836AF07FEED}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{76034596-8AE9-432C-A160-E836AF07FEED}.Release|Any CPU.Build.0 = Release|Any CPU
+		{42BB280B-57F7-4E59-A05F-A7E6F62377C2}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{42BB280B-57F7-4E59-A05F-A7E6F62377C2}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{42BB280B-57F7-4E59-A05F-A7E6F62377C2}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{42BB280B-57F7-4E59-A05F-A7E6F62377C2}.Release|Any CPU.Build.0 = Release|Any CPU
+		{F8BB6790-D712-4C49-AC25-47CFFFE160E3}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{F8BB6790-D712-4C49-AC25-47CFFFE160E3}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{F8BB6790-D712-4C49-AC25-47CFFFE160E3}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{F8BB6790-D712-4C49-AC25-47CFFFE160E3}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+EndGlobal
