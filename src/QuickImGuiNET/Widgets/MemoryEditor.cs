@@ -32,8 +32,6 @@ public static partial class Widgets
         public bool OptShowOptions;
         // display a footer previewing the decimal/binary/hex/float representation of the currently selected bytes.
         public bool OptShowDataPreview;
-        // display values in HexII representation instead of regular hexadecimal: hide null/zero bytes, ascii values as ".X".
-        public bool OptShowHexII;
         public bool OptShowAscii; // display ASCII representation on the right side.
         public bool OptGreyOutZeroes; // display null/zero bytes using the TextDisabled color.
         public bool OptUpperCaseHex; // display hexadecimal values as "FF" instead of "ff".
@@ -92,17 +90,15 @@ public static partial class Widgets
                 var user_data = (UserData*)data.UserData;
                 if (data.HasSelection())
                     user_data->CursorPos = data.CursorPos;
-                
-                if (data.SelectionStart == 0 && data.SelectionEnd == data.BufTextLen)
-                {
-                    // When not editing a byte, always refresh its InputText content pulled from underlying memory data
-                    // (this is a bit tricky, since InputText technically "owns" the master copy of the buffer we edit it in there)
-                    data.DeleteChars(0, data.BufTextLen);
-                    data.InsertChars(0, Marshal.PtrToStringAuto(new(user_data->CurrentBufOverwrite)));
-                    data.SelectionStart = 0;
-                    data.SelectionEnd = 2;
-                    data.CursorPos = 0;
-                }
+
+                if (data.SelectionStart != 0 || data.SelectionEnd != data.BufTextLen) return 0;
+                // When not editing a byte, always refresh its InputText content pulled from underlying memory data
+                // (this is a bit tricky, since InputText technically "owns" the master copy of the buffer we edit it in there)
+                data.DeleteChars(0, data.BufTextLen);
+                data.InsertChars(0, Marshal.PtrToStringAuto(new(user_data->CurrentBufOverwrite)));
+                data.SelectionStart = 0;
+                data.SelectionEnd = 2;
+                data.CursorPos = 0;
 
                 return 0;
             }
@@ -214,7 +210,7 @@ public static partial class Widgets
 
                 var color_text = ImGui.GetColorU32(ImGuiCol.Text);
                 var color_disabled = OptGreyOutZeroes ? ImGui.GetColorU32(ImGuiCol.TextDisabled) : color_text;
-                var format_data = (int n, int a) => OptUpperCaseHex ? $"{a:Xn}" : $"{a:xn}";
+                var format_data = (int n, int a) => OptUpperCaseHex ? $"{$"{a:X}".PadLeft(n)}" : $"{$"{a:x}".PadLeft(n)}";
                 var format_address = format_data;
                 var format_byte = (byte b) => OptUpperCaseHex ? $"{b:X2}" : $"{b:x2}";
                 var format_byte_space = (byte b) => $"{format_byte(b)} ";
@@ -238,15 +234,13 @@ public static partial class Widgets
                             var is_highlight_from_user_func = HighlightFn is not null && HighlightFn(Data, addr);
                             var is_highlight_from_preview = addr >= DataPreviewAddr &&
                                                             addr < DataPreviewAddr + preview_data_type_size;
-                            if (is_highlight_from_user_range || is_highlight_from_user_func ||
-                                is_highlight_from_preview)
+                            if (is_highlight_from_user_range || is_highlight_from_user_func || is_highlight_from_preview)
                             {
-                                var pos = ImGui.GetCursorScreenPos();
+                                var cpos = ImGui.GetCursorScreenPos();
                                 var highlight_width = s.GlyphWidth * 2;
                                 var is_next_byte_highlighted = addr + 1 < Data.Length &&
                                                                ((HighlightMax != -1 && addr + 1 < HighlightMax) ||
-                                                                (HighlightFn is not null &&
-                                                                 HighlightFn(Data, addr + 1)));
+                                                                (HighlightFn is not null && HighlightFn(Data, addr + 1)));
                                 if (is_next_byte_highlighted || n + 1 == Cols)
                                 {
                                     highlight_width = s.HexCellWidth;
@@ -255,8 +249,7 @@ public static partial class Widgets
                                         highlight_width += s.SpacingBetweenMidCols;
                                 }
 
-                                draw_list.AddRectFilled(pos, new(pos.X + highlight_width, pos.Y + s.LineHeight),
-                                    HighlightColor);
+                                draw_list.AddRectFilled(cpos, new(cpos.X + highlight_width, cpos.Y + s.LineHeight), HighlightColor);
                             }
 
                             if (DataEditingAddr == addr)
@@ -299,19 +292,6 @@ public static partial class Widgets
                             {
                                 // NB: The trailing space is not visible but ensure there's no gap that the mouse cannot click on.
                                 var b = ReadFn?.Invoke(Data, addr) ?? Data[addr];
-
-                                if (OptShowHexII)
-                                {
-                                    if (b is >= 32 and < 128)
-                                        ImGui.Text($".{Encoding.ASCII.GetChars(new byte[] {b})} ");
-                                    else if (b == 0xFF && OptGreyOutZeroes)
-                                        ImGui.TextDisabled("## ");
-                                    else if (b == 0x00)
-                                        ImGui.Text("   ");
-                                    else
-                                        ImGui.Text(format_byte_space(b));
-                                }
-                                else
                                 {
                                     if (b == 0 && OptGreyOutZeroes)
                                         ImGui.TextDisabled("00 ");
@@ -319,44 +299,41 @@ public static partial class Widgets
                                         ImGui.Text(format_byte_space(b));
                                 }
 
-                                if (!ReadOnly && ImGui.IsItemHovered() && ImGui.IsMouseClicked(0))
-                                {
-                                    DataEditingTakeFocus = true;
-                                    data_editing_addr_next = addr;
-                                }
+                                if (ReadOnly || !ImGui.IsItemHovered() || !ImGui.IsMouseClicked(0)) continue;
+                                DataEditingTakeFocus = true;
+                                data_editing_addr_next = addr;
                             }
                         }
                         
                         // Draw ASCII values
-                        if (OptShowAscii)
+                        if (!OptShowAscii) continue;
+                        
+                        ImGui.SameLine(s.PosAsciiStart);
+                        var pos = ImGui.GetCursorScreenPos();
+                        addr = line_i * Cols;
+                        ImGui.PushID(line_i);
+                        if (ImGui.InvisibleButton("ascii", new(s.PosAsciiEnd - s.PosAsciiStart, s.LineHeight)))
                         {
-                            ImGui.SameLine(s.PosAsciiStart);
-                            var pos = ImGui.GetCursorScreenPos();
-                            addr = line_i * Cols;
-                            ImGui.PushID(line_i);
-                            if (ImGui.InvisibleButton("ascii", new(s.PosAsciiEnd - s.PosAsciiStart, s.LineHeight)))
+                            DataEditingAddr = DataPreviewAddr =
+                                addr + (int)((ImGui.GetIO().MousePos.X - pos.X) / s.GlyphWidth);
+                            DataEditingTakeFocus = true;
+                        }
+
+                        ImGui.PopID();
+                        for (var n = 0; n < Cols && addr < Data.Length; n++, addr++)
+                        {
+                            if (addr == DataEditingAddr)
                             {
-                                DataEditingAddr = DataPreviewAddr =
-                                    addr + (int)((ImGui.GetIO().MousePos.X - pos.X) / s.GlyphWidth);
-                                DataEditingTakeFocus = true;
+                                draw_list.AddRectFilled(pos, new(pos.X + s.GlyphWidth, pos.Y + s.LineHeight),
+                                    ImGui.GetColorU32(ImGuiCol.FrameBg));
+                                draw_list.AddRectFilled(pos, new(pos.X + s.GlyphWidth, pos.Y + s.LineHeight),
+                                    ImGui.GetColorU32(ImGuiCol.TextSelectedBg));
                             }
 
-                            ImGui.PopID();
-                            for (var n = 0; n < Cols && addr < Data.Length; n++, addr++)
-                            {
-                                if (addr == DataEditingAddr)
-                                {
-                                    draw_list.AddRectFilled(pos, new(pos.X + s.GlyphWidth, pos.Y + s.LineHeight),
-                                        ImGui.GetColorU32(ImGuiCol.FrameBg));
-                                    draw_list.AddRectFilled(pos, new(pos.X + s.GlyphWidth, pos.Y + s.LineHeight),
-                                        ImGui.GetColorU32(ImGuiCol.TextSelectedBg));
-                                }
-
-                                var c = ReadFn?.Invoke(Data, addr) ?? Data[addr];
-                                var display_c = c is < 32 or >= 128 ? '.' : Encoding.ASCII.GetChars(new[] {c})[0];
-                                draw_list.AddText(pos, display_c != '.' ? color_text : color_disabled, $"{display_c}");
-                                pos.X += s.GlyphWidth;
-                            }
+                            var c = ReadFn?.Invoke(Data, addr) ?? Data[addr];
+                            var display_c = c is < 32 or >= 128 ? '.' : Encoding.ASCII.GetChars(new[] {c})[0];
+                            draw_list.AddText(pos, display_c != '.' ? color_text : color_disabled, $"{display_c}");
+                            pos.X += s.GlyphWidth;
                         }
                     }
                 }
@@ -413,7 +390,6 @@ public static partial class Widgets
                 }
 
                 ImGui.Checkbox("Show Data Preview", ref OptShowDataPreview);
-                ImGui.Checkbox("Show HexII", ref OptShowHexII);
                 if (ImGui.Checkbox("Show Ascii", ref OptShowAscii))
                     ContentsWidthChanged = true;
 
@@ -425,8 +401,10 @@ public static partial class Widgets
 
             ImGui.SameLine();
             ImGui.Text(OptUpperCaseHex
-                ? $"Range {base_display_addr:Xs.AddrDigitsCount}..{base_display_addr + Data.Length - 1:Xs.AddrDigitsCount}"
-                : $"Range {base_display_addr:xs.AddrDigitsCount}..{base_display_addr + Data.Length - 1:xs.AddrDigitsCount}");
+                ? $"Range {$"{base_display_addr:X}".PadLeft(s.AddrDigitsCount, '0')}"
+                  + $"..{$"{base_display_addr + Data.Length - 1:X}".PadLeft(s.AddrDigitsCount, '0')}"
+                : $"Range {$"{base_display_addr:x}".PadLeft(s.AddrDigitsCount, '0')}"
+                  + $"..{$"{base_display_addr + Data.Length - 1:x}".PadLeft(s.AddrDigitsCount, '0')}");
             ImGui.SameLine();
             ImGui.SetNextItemWidth((s.AddrDigitsCount + 1) * s.GlyphWidth + style.FramePadding.X * 2.0f);
             if (ImGui.InputText("##addr", ref AddrInputBuf, 32, ImGuiInputTextFlags.CharsHexadecimal | ImGuiInputTextFlags.EnterReturnsTrue))
@@ -521,16 +499,22 @@ public static partial class Widgets
             var elem_size = DataTypeGetSize(data_type);
             var size = DataPreviewAddr + elem_size > Data.Length ? Data.Length - DataPreviewAddr : elem_size;
             if (ReadFn is not null)
-                for (int i = 0, n = (int)size; i < n; ++i)
+                for (var i = 0; i < size; ++i)
                     buf[i] = ReadFn(Data, DataPreviewAddr + i);
             else
                 buf = Data.Skip(DataPreviewAddr).Take(size).ToArray();
+
+            if (DataTypeGetSize(data_type) != buf.Length)
+            {
+                out_buf = String.Empty;
+                return;
+            }
 
             if (data_format == DataFormat.Bin)
             {
                 var binbuf = new byte[8];
                 Array.Copy(buf, binbuf, size);
-                out_buf = FormatBinary(ref binbuf, size * 8)[..128];
+                out_buf = FormatBinary(ref binbuf, size * 8).PadRight(128, '\0')[..128];
                 return;
             }
 
@@ -542,43 +526,39 @@ public static partial class Widgets
                     byte int8 = buf.First();
                     out_buf = data_format switch
                     {
-                        DataFormat.Dec => $"{int8:D}"[..128],
+                        DataFormat.Dec => $"{int8:D}".PadRight(128, '\0')[..128],
                         DataFormat.Hex => $"0x{int8:x2}",
-                        _ => out_buf
                     };
                     break;
                 case ImGuiDataType.U8:
                     sbyte uint8 = (sbyte)buf.First();
                     out_buf = data_format switch
                     {
-                        DataFormat.Dec => $"{uint8:D}"[..128],
+                        DataFormat.Dec => $"{uint8:D}".PadRight(128, '\0')[..128],
                         DataFormat.Hex => $"0x{uint8:x2}",
-                        _ => out_buf
                     };
                     break;
                 case ImGuiDataType.S16:
                     short int16 = BitConverter.ToInt16(buf);
                     out_buf = data_format switch
                     {
-                        DataFormat.Dec => $"{int16:D}"[..128],
+                        DataFormat.Dec => $"{int16:D}".PadRight(128, '\0')[..128],
                         DataFormat.Hex => $"0x{int16:x4}",
-                        _ => out_buf
                     };
                     break;
                 case ImGuiDataType.U16:
                     ushort uint16 = BitConverter.ToUInt16(buf);
                     out_buf = data_format switch
                     {
-                        DataFormat.Dec => $"{uint16:D}"[..128],
+                        DataFormat.Dec => $"{uint16:D}".PadRight(128, '\0')[..128],
                         DataFormat.Hex => $"0x{uint16:x4}",
-                        _ => out_buf
                     };
                     break;
                 case ImGuiDataType.S32:
                     int int32 = BitConverter.ToInt32(buf);
                     out_buf = data_format switch
                     {
-                        DataFormat.Dec => $"{int32:D}"[..128],
+                        DataFormat.Dec => $"{int32:D}".PadRight(128, '\0')[..128],
                         DataFormat.Hex => $"0x{int32:x8}"
                     };
                     break;
@@ -586,7 +566,7 @@ public static partial class Widgets
                     uint uint32 = BitConverter.ToUInt32(buf);
                     out_buf = data_format switch
                     {
-                        DataFormat.Dec => $"{uint32:D}"[..128],
+                        DataFormat.Dec => $"{uint32:D}".PadRight(128, '\0')[..128],
                         DataFormat.Hex => $"0x{uint32:x8}"
                     };
                     break;
@@ -594,7 +574,7 @@ public static partial class Widgets
                     long int64 = BitConverter.ToInt64(buf);
                     out_buf = data_format switch
                     {
-                        DataFormat.Dec => $"{int64:D}"[..128],
+                        DataFormat.Dec => $"{int64:D}".PadRight(128, '\0')[..128],
                         DataFormat.Hex => $"0x{int64:x16}"
                     };
                     break;
@@ -602,7 +582,7 @@ public static partial class Widgets
                     ulong uint64 = BitConverter.ToUInt64(buf);
                     out_buf = data_format switch
                     {
-                        DataFormat.Dec => $"{uint64:D}"[..128],
+                        DataFormat.Dec => $"{uint64:D}".PadRight(128, '\0')[..128],
                         DataFormat.Hex => $"0x{uint64:x16}"
                     };
                     break;
@@ -611,7 +591,7 @@ public static partial class Widgets
                     var bits_f32 = BitConverter.SingleToInt32Bits(float32);
                     out_buf = data_format switch
                     {
-                        DataFormat.Dec => $"{float32:N}"[..128],
+                        DataFormat.Dec => $"{float32:N}".PadRight(128, '\0')[..128],
                         DataFormat.Hex => $"{((bits_f32 & (1L << 31)) != 0 ? "-" : String.Empty)}" + //Negative
                                           $"1.{bits_f32 & 0x7FFFFF:X}" + // Mantissa in hex
                                           $"+{(bits_f32 >> 23) & 0xFF:X}" // Exponent in hex
@@ -622,7 +602,7 @@ public static partial class Widgets
                     var bits_f64 = BitConverter.DoubleToInt64Bits(float64);
                     out_buf = data_format switch
                     {
-                        DataFormat.Dec => $"{float64:N}"[..128],
+                        DataFormat.Dec => $"{float64:N}".PadRight(128, '\0')[..128],
                         DataFormat.Hex => $"{((bits_f64 & (1L << 63)) != 0 ? "-" : String.Empty)}" + //Negative
                                           $"1.{bits_f64 & 0xFFFFFFFFFFFFF:X}" + // Mantissa in hex
                                           $"+{(int)((bits_f64 >> 52) & 0x7FF):X}" // Exponent in hex
