@@ -20,6 +20,7 @@ public abstract class Widget
     public Widget(Backend backend, string? Name = null, bool AutoRegister = true)
     {
         this.Name = Name ?? $"{DateTime.UtcNow.ToBinary()}";
+        backend.Logger.Debug($"Initializing Widget {Name}{(AutoRegister ? " (Auto)" : String.Empty)}");
         if (AutoRegister) {
             backend.Events["widgetReg"].Children.Add(this.Name, new(new() {
                 { "open", new() },

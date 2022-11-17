@@ -71,7 +71,7 @@ public class Backend : QuickImGuiNET.Backend, IDisposable
                 : GraphicsDevice.IsBackendSupported(GraphicsBackend.Metal)      ? GraphicsBackend.Metal      // Metal is only available on macOS but is prioritized over OpenGL
                 : GraphicsDevice.IsBackendSupported(GraphicsBackend.OpenGL)     ? GraphicsBackend.OpenGL     // OpenGL is available on all platforms as a default backend if Vulkan is not available
                 : GraphicsDevice.IsBackendSupported(GraphicsBackend.Direct3D11) ? GraphicsBackend.Direct3D11 // Direct3D11 is only available on Windows and is only a fallback if OpenGL is not available either
-                : throw new System.InvalidOperationException("No supported backend found...");
+                : throw new InvalidOperationException("No supported backend found...");
 
         // Create window, GraphicsDevice, and all resources necessary to render
         _window = VeldridStartup.CreateWindow(new WindowCreateInfo(50, 50, width, height, WindowState.Normal, "QIMGUIN"));

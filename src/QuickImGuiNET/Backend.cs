@@ -1,4 +1,5 @@
 using ImGuiNET;
+using Serilog;
 
 namespace QuickImGuiNET;
 
@@ -21,4 +22,5 @@ public abstract class Backend
     public (IntPtr ID, dynamic Texture) FontTexture;
     public Dictionary<string, Event> Events = new();
     public Dictionary<string, Widget> WidgetReg = new();
+    public ILogger Logger = Log.Logger;
 }

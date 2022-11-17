@@ -2,6 +2,7 @@ using ImGuiNET;
 using System.Numerics;
 using System.Reflection;
 using VRBK = QuickImGuiNET.Veldrid;
+using Serilog;
 
 namespace QuickImGuiNET.Example.Veldrid;
 
@@ -12,22 +13,49 @@ public class Program
 
     public static void Main(string[] args)
     {
+        // Temporary default logger
+        Log.Logger = new LoggerConfiguration()
+            .WriteTo.Console(
+                outputTemplate: "[{Timestamp:HH:mm:ss} {Level:u3}] {Message:lj}{NewLine}{Exception}") // Log to console
+            .WriteTo.File("QIMGUIN.log",
+                outputTemplate: "[{Timestamp:HH:mm:ss} {Level:u3}] {Message:lj}{NewLine}{Exception}") // Log to file
+            .MinimumLevel.Debug() // Set minimum logging level
+            .CreateLogger();
+        
+        // Read CLI Args
+        //TODO Load Config file first, then CLI args
         if (args.Length != defaultArgs.Length)
             args = args.Concat(defaultArgs.Skip(args.Length)).ToArray();
         int width = int.Parse(args[0]);
         int height = int.Parse(args[1]);
         int veldridBackendIndex = int.Parse(args[2]);
-
+        
+        Log.Logger.Information($"QUIMGUIN v0.1 - ({width}x{height})"
+                               + $"\n\t- VeldridBackendIndex: {veldridBackendIndex}");
+        Log.Logger.Information("Initializing Veldrid Backend");
         backend = new VRBK.Backend(width, height, veldridBackendIndex);
         
+        // TODO Use Config info to set up proper logger
+        Log.Logger.Information("Initializing proper logger");
+        backend.Logger = new LoggerConfiguration()
+            .WriteTo
+            .Console(
+                outputTemplate: "[{Timestamp:HH:mm:ss} {Level:u3}] {Message:lj}{NewLine}{Exception}") // Log to console
+            .WriteTo.File("QIMGUIN.log",
+                outputTemplate: "{Timestamp:yyyy-MM-dd HH:mm:ss.fff zzz} [{Level:u3}] {Message:lj}{NewLine}{Exception}") // Log to file
+            .MinimumLevel.Debug() // Set minimum logging level
+            .CreateLogger();
+        
+        backend.Logger.Information("Setting up basic Events");
         backend.Events = new() {
             { "onMainMenuBar", new(new() {
                 { "Debug", new() }
             })},
             { "widgetReg", new() }
         };
-
-        backend.WidgetReg = new() {};
+        
+        backend.Logger.Information("Initializing Widget Registry");
+        backend.WidgetReg = new();
         new ExampleWidget(backend, "ExampleWidget##example00") {
             Visible        = true,
             RenderMode     = WidgetRenderMode.Window,
@@ -102,6 +130,7 @@ public class Program
             }
         };
 
+        backend.Logger.Information("Run Backend loop");
         backend.Run(Draw, UpdateCallback: Update);
     }
 
