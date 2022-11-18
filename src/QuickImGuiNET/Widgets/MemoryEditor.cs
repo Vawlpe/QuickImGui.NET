@@ -285,7 +285,6 @@ public static partial class Widgets
                                     else
                                         Data[addr] = (byte)data_input_value;
                                 }
-
                                 ImGui.PopID();
                             }
                             else
