@@ -3,6 +3,8 @@ using System.Numerics;
 using System.Reflection;
 using VRBK = QuickImGuiNET.Veldrid;
 using Serilog;
+using Tomlyn;
+using Tomlyn.Model;
 
 namespace QuickImGuiNET.Example.Veldrid;
 
@@ -21,28 +23,52 @@ public class Program
                 outputTemplate: "[{Timestamp:HH:mm:ss} {Level:u3}] {Message:lj}{NewLine}{Exception}") // Log to file
             .MinimumLevel.Debug() // Set minimum logging level
             .CreateLogger();
+        Log.Information("QUIMGUIN v0.1");
         
-        // Read CLI Args
-        //TODO Load Config file first, then CLI args
+        // Config stuff
+        Log.Information("Setting up Config system");
+        var cfg_toml = new Config.Toml("QUIMGUIN.cfg");
+        var cfg = new Config()
+        {
+            _default = Toml.ToModel(""),
+            Sinks = new IConfigSink[]
+            {
+                cfg_toml
+            },
+            Sources = new IConfigSource[]
+            {
+                cfg_toml
+            }
+        };
+        cfg.LoadDefault();
+        cfg.From(cfg.Sources[0]);
+
+        //TODO Replace w/ CLI Config-Source/Sink
+        Log.Information("Parsing CLI options...");
         if (args.Length != defaultArgs.Length)
             args = args.Concat(defaultArgs.Skip(args.Length)).ToArray();
-        int width = int.Parse(args[0]);
-        int height = int.Parse(args[1]);
-        int veldridBackendIndex = int.Parse(args[2]);
+        var width = int.Parse(args[0]);
+        var height = int.Parse(args[1]);
+        var veldridBackendIndex = int.Parse(args[2]);
         
-        Log.Logger.Information($"QUIMGUIN v0.1 - ({width}x{height})"
-                               + $"\n\t- VeldridBackendIndex: {veldridBackendIndex}");
+        Log.Information("Config Done, ready to initialize"
+            + $"\n\t- MainViewportSize: ({width}x{height})"
+            + $"\n\t- VeldridBackendIndex: {veldridBackendIndex}");
+        
         Log.Logger.Information("Initializing Veldrid Backend");
         backend = new VRBK.Backend(width, height, veldridBackendIndex);
         
+        Log.Information("Moving Config to Backend");
+        backend.Config = cfg;
+        
         // TODO Use Config info to set up proper logger
-        Log.Logger.Information("Initializing proper logger");
+        Log.Logger.Information("Initializing proper logger under Backend w/ Config");
         backend.Logger = new LoggerConfiguration()
             .WriteTo
-            .Console(
-                outputTemplate: "[{Timestamp:HH:mm:ss} {Level:u3}] {Message:lj}{NewLine}{Exception}") // Log to console
-            .WriteTo.File("QIMGUIN.log",
-                outputTemplate: "{Timestamp:yyyy-MM-dd HH:mm:ss.fff zzz} [{Level:u3}] {Message:lj}{NewLine}{Exception}") // Log to file
+            .Console( // Log to console
+                outputTemplate: "[{Timestamp:HH:mm:ss} {Level:u3}] {Message:lj}{NewLine}{Exception}")
+            .WriteTo.File("QIMGUIN.log", // Log to file
+                outputTemplate: "{Timestamp:yyyy-MM-dd HH:mm:ss.fff zzz} [{Level:u3}] {Message:lj}{NewLine}{Exception}")
             .MinimumLevel.Debug() // Set minimum logging level
             .CreateLogger();
         
