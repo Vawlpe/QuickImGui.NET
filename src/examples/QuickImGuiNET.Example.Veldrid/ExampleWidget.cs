@@ -8,7 +8,6 @@ public class ExampleWidget : Widget
 {
     public Texture IconTexture;
     public Vector2 IconRenderSize;
-    public int TestCooldownMult;
     public ExampleWidget(Backend backend, string? Name, bool AutoRegister = true) : base(backend, Name, AutoRegister)
     {
         backend.Events["onMainMenuBar"]["Debug"].Hook += RenderOnMainMenuBar_Debug;
@@ -23,5 +22,10 @@ public class ExampleWidget : Widget
     {
         ImGui.Text("Hello QIMGUIN!");
         ImGui.Image(IconTexture.ID, IconRenderSize);
+        if (!ImGui.BeginListBox(String.Empty)) return;
+        foreach (var sink in backend.Config.Sinks)
+            if(ImGui.Button($"Write config via sink {sink.GetType().Name}"))
+                backend.Config.To(sink);
+        ImGui.EndListBox();
     }
 }

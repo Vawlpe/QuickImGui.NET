@@ -6,32 +6,35 @@ public partial class Config
 {
     public class Toml : IConfigSink, IConfigSource
     {
-        private string path;
-        public Toml(string path)
+        private readonly string _path;
+        private readonly Backend? _backend;
+        private ILogger Logger => _backend is null ? Log.Logger : _backend.Logger;
+        public Toml(string path, ref Backend backend)
         {
-            this.path = Path.GetFullPath(path);
+            _path = Path.GetFullPath(path);
+            _backend = backend;
         }
         public bool Write(TomlTable data)
         {
+            Logger.Information("Saving TOML config file");
             try
             {
-                if (File.Exists(path))
+                if (File.Exists(_path))
                 {
-                    Log.Information($"Found Existing Config file, Overwriting...: {path}");
-                    File.WriteAllText(path, Tomlyn.Toml.FromModel(data));
+                    Logger.Information($"Found Existing TOML config file, overwriting: {_path}");
+                    File.WriteAllText(_path, Tomlyn.Toml.FromModel(data));
                 }
                 else
                 {
-                    Log.Information("No Config file found, creating new config w/ current options");
-                    File.Create(path);
-                    File.WriteAllText(path, Tomlyn.Toml.FromModel(data));
+                    Logger.Information("No TOML config file found, creating new config w/ current options");
+                    File.WriteAllText(_path, Tomlyn.Toml.FromModel(data));
                 }
 
                 return true;
             }
             catch (Exception e)
             {
-                Log.Error(e.ToString());
+                Logger.Error($"Error writing TOML config file: {e}");
                 return false;
             }
         }
@@ -40,28 +43,27 @@ public partial class Config
         {
             try
             {
-                if (File.Exists(path))
+                if (File.Exists(_path))
                 {
-                    var fileText = File.ReadAllText(path);
+                    var fileText = File.ReadAllText(_path);
                     if (Tomlyn.Toml.Validate(Tomlyn.Toml.Parse(fileText)).HasErrors)
-                        Log.Information("Could not validate config file.");
+                        Logger.Information("Could not validate TOML config file.");
                     else
                     {
-                        Log.Information("Loading Config file into temp object");
+                        Logger.Information("Loading TOML config file");
                         data = Tomlyn.Toml.ToModel(fileText);
                     }
                 }
                 else
                 {
-                    Log.Information("No Config file found, creating new config w/ current options");
-                    File.Create(path);
-                    File.WriteAllText(path, Tomlyn.Toml.FromModel(data));
+                    Logger.Information("No TOML config file found, creating new config w/ current options");
+                    File.WriteAllText(_path, Tomlyn.Toml.FromModel(data));
                 }
                 return true;
             }
             catch (Exception e)
             {
-                Log.Error(e.ToString());
+                Logger.Error($"Error reading TOML config file: {e}");
                 return false;
             }
         }

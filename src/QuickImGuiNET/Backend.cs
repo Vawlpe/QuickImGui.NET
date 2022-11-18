@@ -17,6 +17,7 @@ public abstract class Backend
     public abstract void RenderImDrawData(ImDrawDataPtr drawData);
     public abstract IntPtr BindTexture(Texture texture);
     public abstract IntPtr UpdateTexture(Texture texture);
+    public abstract void Init(params dynamic[] args);
     public abstract void FreeTexture(IntPtr ID);
     public abstract void UpdateInput(dynamic input);
     public Dictionary<IntPtr, dynamic> Textures = new();

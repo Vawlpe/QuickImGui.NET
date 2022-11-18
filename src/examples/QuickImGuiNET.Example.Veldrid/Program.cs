@@ -4,14 +4,12 @@ using System.Reflection;
 using VRBK = QuickImGuiNET.Veldrid;
 using Serilog;
 using Tomlyn;
-using Tomlyn.Model;
 
 namespace QuickImGuiNET.Example.Veldrid;
 
 public class Program
 {
-    public static readonly string[] defaultArgs = new string[] { "1280", "720", "-1" };
-    public static VRBK.Backend backend;
+    public static Backend backend;
 
     public static void Main(string[] args)
     {
@@ -25,64 +23,73 @@ public class Program
             .CreateLogger();
         Log.Information("QUIMGUIN v0.1");
         
-        // Config stuff
-        Log.Information("Setting up Config system");
-        var cfg_toml = new Config.Toml("QUIMGUIN.cfg");
-        var cfg = new Config()
-        {
-            _default = Toml.ToModel(""),
-            Sinks = new IConfigSink[]
-            {
-                cfg_toml
-            },
-            Sources = new IConfigSource[]
-            {
-                cfg_toml
-            }
-        };
-        cfg.LoadDefault();
-        cfg.From(cfg.Sources[0]);
+        // Re-usable vars for cfg sinks/sources
+        var cfg_toml = new Config.Toml("QUIMGUIN.cfg", ref backend);
+        var cfg_cli = new Config.Cli(args, ref backend);
 
-        //TODO Replace w/ CLI Config-Source/Sink
-        Log.Information("Parsing CLI options...");
-        if (args.Length != defaultArgs.Length)
-            args = args.Concat(defaultArgs.Skip(args.Length)).ToArray();
-        var width = int.Parse(args[0]);
-        var height = int.Parse(args[1]);
-        var veldridBackendIndex = int.Parse(args[2]);
-        
-        Log.Information("Config Done, ready to initialize"
-            + $"\n\t- MainViewportSize: ({width}x{height})"
-            + $"\n\t- VeldridBackendIndex: {veldridBackendIndex}");
-        
+        // Backend shadow ctor
         Log.Logger.Information("Initializing Veldrid Backend");
-        backend = new VRBK.Backend(width, height, veldridBackendIndex);
-        
-        Log.Information("Moving Config to Backend");
-        backend.Config = cfg;
-        
-        // TODO Use Config info to set up proper logger
-        Log.Logger.Information("Initializing proper logger under Backend w/ Config");
-        backend.Logger = new LoggerConfiguration()
-            .WriteTo
-            .Console( // Log to console
-                outputTemplate: "[{Timestamp:HH:mm:ss} {Level:u3}] {Message:lj}{NewLine}{Exception}")
-            .WriteTo.File("QIMGUIN.log", // Log to file
-                outputTemplate: "{Timestamp:yyyy-MM-dd HH:mm:ss.fff zzz} [{Level:u3}] {Message:lj}{NewLine}{Exception}")
-            .MinimumLevel.Debug() // Set minimum logging level
-            .CreateLogger();
-        
-        backend.Logger.Information("Setting up basic Events");
-        backend.Events = new() {
-            { "onMainMenuBar", new(new() {
-                { "Debug", new() }
-            })},
-            { "widgetReg", new() }
+        backend = new VRBK.Backend()
+        {
+            // Add Config to shadow backend
+            Config = new Config()
+            {
+                _default = Toml.ToModel(""),
+                Sinks = new IConfigSink[]
+                {
+                    cfg_toml,
+                    cfg_cli
+                },
+                Sources = new IConfigSource[]
+                {
+                    cfg_toml,
+                    cfg_cli
+                }
+            },
+            // Add Logger to shadow backend
+            Logger = new LoggerConfiguration()
+                .WriteTo
+                .Console( // Log to console
+                    outputTemplate: "[{Timestamp:HH:mm:ss} {Level:u3}] {Message:lj}{NewLine}{Exception}")
+                .WriteTo.File("QIMGUIN.log", // Log to file
+                    outputTemplate:
+                    "{Timestamp:yyyy-MM-dd HH:mm:ss.fff zzz} [{Level:u3}] {Message:lj}{NewLine}{Exception}")
+                .MinimumLevel.Debug() // Set minimum logging level
+                .CreateLogger(),
+            // Add Events to shadow backend
+            Events = new()
+            {
+                {
+                    "onMainMenuBar", new(new()
+                    {
+                        { "Debug", new() }
+                    })
+                },
+                { "widgetReg", new() }
+            },
+            // Add Widget Registry to shadow backend
+            WidgetReg = new()
         };
         
-        backend.Logger.Information("Initializing Widget Registry");
-        backend.WidgetReg = new();
-        new ExampleWidget(backend, "ExampleWidget##example00") {
+        // Loading config sources
+        backend.Logger.Information($"Loading default config + ({backend.Config.Sources.Length}) source(s)");
+        backend.Config.LoadDefault();
+        backend.Config.From(backend.Config.Sources[0]);
+        backend.Config.From(backend.Config.Sources[1]);
+        
+        //TODO replace temp values
+        const int width = 1280;
+        const int height = 720;
+        const int veldridBackendIndex = -1;
+       backend.Logger.Information("Config Done, ready to initialize"
+                        + $"\n\t- MainViewportSize: ({width}x{height})"
+                        + $"\n\t- VeldridBackendIndex: {veldridBackendIndex}");
+       
+       // Initialize shadow -> ready backend
+       backend.Init(width, height, veldridBackendIndex);
+
+       // Auto-register widgets to backend
+       new ExampleWidget(backend, "ExampleWidget##example00") {
             Visible        = true,
             RenderMode     = WidgetRenderMode.Window,
             Position       = new(100, 100),
@@ -156,8 +163,20 @@ public class Program
             }
         };
 
+        // Run backend loop and handle errors
         backend.Logger.Information("Run Backend loop");
-        backend.Run(Draw, UpdateCallback: Update);
+        try
+        {
+            backend.Run(Draw, UpdateCallback: Update);
+        }
+        catch (Exception e)
+        {
+            backend.Logger.Error(e.ToString());
+        }
+        finally
+        {
+            backend.Logger.Information($"EXITING: {Environment.ExitCode}");
+        }
     }
 
     public static bool showDemoWindow = false;
