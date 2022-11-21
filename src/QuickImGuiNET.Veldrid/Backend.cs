@@ -1,87 +1,114 @@
-using ImGuiNET;
-using Veldrid;
-using VR = Veldrid;
-using Veldrid.Sdl2;
-using Veldrid.StartupUtilities;
 using System.Numerics;
 using System.Reflection;
-using System.Runtime.InteropServices;
 using System.Runtime.CompilerServices;
+using System.Runtime.InteropServices;
+using System.Text;
+using ImGuiNET;
+using Veldrid.Sdl2;
+using Veldrid.StartupUtilities;
+using VR = Veldrid;
 
 namespace QuickImGuiNET.Veldrid;
 
 public class Backend : QuickImGuiNET.Backend, IDisposable
 {
-    private GraphicsDevice _gd;
-    private Sdl2Window _window;
-    private IntPtr _icon;
-    private CommandList _cl;
-    private bool _frameBegun;
-    private static Vector3 _clearColor = new Vector3(0.45f, 0.55f, 0.6f);
-
-    // Veldrid objects
-    private DeviceBuffer _vertexBuffer;
-    private DeviceBuffer _indexBuffer;
-    private DeviceBuffer _projMatrixBuffer;
-    private Shader _vertexShader;
-    private Shader _fragmentShader;
-    private ResourceLayout _mainRl;
-    private ResourceLayout _ftRl;
-    private Pipeline _pipeline;
-    private ResourceSet _mainRs;
-    private ResourceSet _ftRs;
-    private Dictionary<IntPtr, ResourceSet> _textureRs = new();
+    private static readonly Vector3 _clearColor = new(0.45f, 0.55f, 0.6f);
+    private bool _altDown;
+    private VR.CommandList _cl;
 
     // Input stuff
     private bool _controlDown;
-    private bool _shiftDown;
-    private bool _altDown;
-    private bool _winKeyDown;
-
-    // Window stuff
-    private int _windowWidth;
-    private int _windowHeight;
-    private Vector2 _scaleFactor = Vector2.One;
-    private ImGuiWindow _mainViewportWindow;
     private Platform_CreateWindow _createWindow;
     private Platform_DestroyWindow _destroyWindow;
-    private Platform_GetWindowPos _getWindowPos;
-    private Platform_ShowWindow _showWindow;
-    private Platform_SetWindowPos _setWindowPos;
-    private Platform_SetWindowSize _setWindowSize;
-    private Platform_GetWindowSize _getWindowSize;
-    private Platform_SetWindowFocus _setWindowFocus;
+    private VR.Shader _fragmentShader;
+    private bool _frameBegun;
+    private VR.ResourceLayout _ftRl;
+    private VR.ResourceSet _ftRs;
+    private VR.GraphicsDevice _gd;
     private Platform_GetWindowFocus _getWindowFocus;
     private Platform_GetWindowMinimized _getWindowMinimized;
-    private Platform_SetWindowTitle _setWindowTitle;
+    private Platform_GetWindowPos _getWindowPos;
+    private Platform_GetWindowSize _getWindowSize;
+    private IntPtr _icon;
+    private VR.DeviceBuffer _indexBuffer;
 
     // ImGui stuff
     private ImGuiIOPtr _io;
-    private ImGuiPlatformIOPtr _platformIo;
 
     // Texture stuff
     private int _lastAssignedId = 100;
+    private VR.ResourceLayout _mainRl;
+    private VR.ResourceSet _mainRs;
+    private ImGuiWindow _mainViewportWindow;
+    private VR.Pipeline _pipeline;
+    private ImGuiPlatformIOPtr _platformIo;
+    private VR.DeviceBuffer _projMatrixBuffer;
+    private readonly Vector2 _scaleFactor = Vector2.One;
+    private Platform_SetWindowFocus _setWindowFocus;
+    private Platform_SetWindowPos _setWindowPos;
+    private Platform_SetWindowSize _setWindowSize;
+    private Platform_SetWindowTitle _setWindowTitle;
+    private bool _shiftDown;
+    private Platform_ShowWindow _showWindow;
+    private readonly Dictionary<IntPtr, VR.ResourceSet> _textureRs = new();
 
-    public Backend()
+    // Veldrid objects
+    private VR.DeviceBuffer _vertexBuffer;
+    private VR.Shader _vertexShader;
+    private Sdl2Window _window;
+    private int _windowHeight;
+
+    // Window stuff
+    private int _windowWidth;
+    private bool _winKeyDown;
+
+    public void Dispose()
     {
-        //shadow ctor
+        _vertexBuffer.Dispose();
+        _indexBuffer.Dispose();
+        _projMatrixBuffer.Dispose();
+
+        _vertexShader.Dispose();
+        _fragmentShader.Dispose();
+
+        _pipeline.Dispose();
+
+        _mainRs.Dispose();
+        _ftRs.Dispose();
+
+        _mainRl.Dispose();
+        _ftRl.Dispose();
+
+        FontTexture.Texture.Target.Dispose();
+        FontTexture.Texture.Dispose();
+
+        Array.ForEach(Textures.Keys.ToArray(), FreeTexture);
     }
 
-    public override unsafe void Init(params dynamic[] args)
+    public override unsafe void Init()
     {
-        int width = args[0];
-        int height = args[1]; 
-        var gfxbk = args[2];
+        var width = Config["window"]["width"];
+        var height = Config["window"]["height"];
+        var gfxbk = Config["veldrid"]["backend"];
         if (gfxbk == -1)
-            gfxbk = GraphicsDevice.IsBackendSupported(GraphicsBackend.Vulkan)   ? GraphicsBackend.Vulkan     // Vulkan & MoltenVK are prioritized on all platforms
-                : GraphicsDevice.IsBackendSupported(GraphicsBackend.Metal)      ? GraphicsBackend.Metal      // Metal is only available on macOS but is prioritized over OpenGL
-                : GraphicsDevice.IsBackendSupported(GraphicsBackend.OpenGL)     ? GraphicsBackend.OpenGL     // OpenGL is available on all platforms as a default backend if Vulkan is not available
-                : GraphicsDevice.IsBackendSupported(GraphicsBackend.Direct3D11) ? GraphicsBackend.Direct3D11 // Direct3D11 is only available on Windows and is only a fallback if OpenGL is not available either
-                : throw new InvalidOperationException("No supported backend found...");
+            gfxbk = VR.GraphicsDevice.IsBackendSupported(VR.GraphicsBackend.Vulkan)
+                ? VR.GraphicsBackend.Vulkan // Vulkan & MoltenVK are prioritized on all platforms
+                : VR.GraphicsDevice.IsBackendSupported(VR.GraphicsBackend.Metal)
+                    ? VR.GraphicsBackend.Metal // Metal is only available on macOS but is prioritized over OpenGL
+                    : VR.GraphicsDevice.IsBackendSupported(VR.GraphicsBackend.OpenGL)
+                        ? VR.GraphicsBackend
+                            .OpenGL // OpenGL is available on all platforms as a default backend if Vulkan is not available
+                        : VR.GraphicsDevice.IsBackendSupported(VR.GraphicsBackend.Direct3D11)
+                            ? VR.GraphicsBackend
+                                .Direct3D11 // Direct3D11 is only available on Windows and is only a fallback if OpenGL is not available either
+                            : throw new InvalidOperationException("No supported backend found...");
 
         // Create window, GraphicsDevice, and all resources necessary to render
-        _window = VeldridStartup.CreateWindow(new WindowCreateInfo(50, 50, width, height, WindowState.Normal, "QIMGUIN"));
-        _gd = VeldridStartup.CreateGraphicsDevice(_window, new GraphicsDeviceOptions(true, null, true, ResourceBindingModel.Improved, true, true), (GraphicsBackend)gfxbk);
+        _window = VeldridStartup.CreateWindow(new WindowCreateInfo(50, 50, width, height, VR.WindowState.Normal,
+            "QIMGUIN"));
+        _gd = VeldridStartup.CreateGraphicsDevice(_window,
+            new VR.GraphicsDeviceOptions(true, null, true, VR.ResourceBindingModel.Improved, true, true),
+            (VR.GraphicsBackend)gfxbk);
         _cl = _gd.ResourceFactory.CreateCommandList();
 
         _window.Resized += () =>
@@ -95,22 +122,23 @@ public class Backend : QuickImGuiNET.Backend, IDisposable
         // Load and set icon
         if (File.Exists(Path.Combine(Path.GetDirectoryName(Assembly.GetEntryAssembly().Location) ?? "", "Icon.png")))
         {
-            var iconSrc = SDL2Extensions.SDL_RWFromFile.Invoke(Path.Combine(Path.GetDirectoryName(Assembly.GetEntryAssembly().Location) ?? "", "Icon.png"), "rb");
+            var iconSrc = SDL2Extensions.SDL_RWFromFile.Invoke(
+                Path.Combine(Path.GetDirectoryName(Assembly.GetEntryAssembly().Location) ?? "", "Icon.png"), "rb");
             _icon = SDL2Extensions.SDL_LoadBMP_RW.Invoke(iconSrc, 1);
             SDL2Extensions.SDL_SetWindowIcon.Invoke(_window.SdlWindowHandle, _icon);
         }
 
         // Set up ImGui
-        IntPtr context = ImGui.CreateContext();
+        var context = ImGui.CreateContext();
         ImGui.SetCurrentContext(context);
         _io = ImGui.GetIO();
 
         _io.ConfigFlags |= ImGuiConfigFlags.DockingEnable;
-        if ((GraphicsBackend)gfxbk == GraphicsBackend.Vulkan)
+        if ((VR.GraphicsBackend)gfxbk == VR.GraphicsBackend.Vulkan)
             _io.ConfigFlags |= ImGuiConfigFlags.ViewportsEnable;
 
         _platformIo = ImGui.GetPlatformIO();
-        ImGuiViewportPtr mainViewport = _platformIo.Viewports[0];
+        var mainViewport = _platformIo.Viewports[0];
         mainViewport.PlatformHandle = _window.Handle;
         _mainViewportWindow = new ImGuiWindow(_gd, mainViewport, _window);
 
@@ -136,14 +164,15 @@ public class Backend : QuickImGuiNET.Backend, IDisposable
         _platformIo.Platform_GetWindowMinimized = Marshal.GetFunctionPointerForDelegate(_getWindowMinimized);
         _platformIo.Platform_SetWindowTitle = Marshal.GetFunctionPointerForDelegate(_setWindowTitle);
 
-        ImGuiNative.ImGuiPlatformIO_Set_Platform_GetWindowPos(_platformIo.NativePtr, Marshal.GetFunctionPointerForDelegate(_getWindowPos));
-        ImGuiNative.ImGuiPlatformIO_Set_Platform_GetWindowSize(_platformIo.NativePtr, Marshal.GetFunctionPointerForDelegate(_getWindowSize));
+        ImGuiNative.ImGuiPlatformIO_Set_Platform_GetWindowPos(_platformIo.NativePtr,
+            Marshal.GetFunctionPointerForDelegate(_getWindowPos));
+        ImGuiNative.ImGuiPlatformIO_Set_Platform_GetWindowSize(_platformIo.NativePtr,
+            Marshal.GetFunctionPointerForDelegate(_getWindowSize));
 
-        unsafe
-        {
-            _io.NativePtr->BackendPlatformName = (byte*)new FixedAsciiString("QuickImGuiNET.Veldrid (SDL2) Backend").DataPtr;
-            _io.NativePtr->BackendRendererName = (byte*)new FixedAsciiString(Enum.GetName(typeof(GraphicsBackend), gfxbk)).DataPtr;
-        }
+        _io.NativePtr->BackendPlatformName =
+            (byte*)new FixedAsciiString("QuickImGuiNET.Veldrid (SDL2) Backend").DataPtr;
+        _io.NativePtr->BackendRendererName =
+            (byte*)new FixedAsciiString(Enum.GetName(typeof(VR.GraphicsBackend), gfxbk)).DataPtr;
         _io.BackendFlags |= ImGuiBackendFlags.HasMouseCursors;
         _io.BackendFlags |= ImGuiBackendFlags.HasSetMousePos;
         _io.BackendFlags |= ImGuiBackendFlags.PlatformHasViewports;
@@ -163,19 +192,19 @@ public class Backend : QuickImGuiNET.Backend, IDisposable
     }
 
     public override void Run(
-        Action  DrawUICallback,
-        float   deltaSeconds          = 1f / 60f,
+        Action DrawUICallback,
+        float deltaSeconds = 1f / 60f,
         Action<float>? UpdateCallback = null,
-        Action? RenderCallback        = null,
-        Action? EarlyUpdateCallback   = null,
-        Action? EarlyRenderCallback   = null
+        Action? RenderCallback = null,
+        Action? EarlyUpdateCallback = null,
+        Action? EarlyRenderCallback = null
     )
     {
         // Main application loop
         while (_window.Exists)
         {
-            InputSnapshot input = _window.PumpEvents();
-            if (!_window.Exists) { break; }
+            var input = _window.PumpEvents();
+            if (!_window.Exists) break;
 
             EarlyUpdateCallback?.Invoke();
             Update(deltaSeconds, input);
@@ -185,8 +214,8 @@ public class Backend : QuickImGuiNET.Backend, IDisposable
 
             _cl.Begin();
             _cl.SetFramebuffer(_gd.MainSwapchain.Framebuffer);
-            _cl.ClearColorTarget(0, new RgbaFloat(_clearColor.X, _clearColor.Y, _clearColor.Z, 1f));
-            
+            _cl.ClearColorTarget(0, new VR.RgbaFloat(_clearColor.X, _clearColor.Y, _clearColor.Z, 1f));
+
             EarlyRenderCallback?.Invoke();
             Render();
             RenderCallback?.Invoke();
@@ -205,7 +234,7 @@ public class Backend : QuickImGuiNET.Backend, IDisposable
         SDL2Extensions.SDL_FreeSurface.Invoke(_icon);
     }
 
-    private void Update(float deltaSeconds, InputSnapshot input)
+    private void Update(float deltaSeconds, VR.InputSnapshot input)
     {
         if (_frameBegun)
         {
@@ -256,56 +285,67 @@ public class Backend : QuickImGuiNET.Backend, IDisposable
     {
         var outputDescription = _gd.MainSwapchain.Framebuffer.OutputDescription;
         var factory = _gd.ResourceFactory;
-        
-        _vertexBuffer = factory.CreateBuffer(new BufferDescription(10000, BufferUsage.VertexBuffer | BufferUsage.Dynamic));
+
+        _vertexBuffer =
+            factory.CreateBuffer(new VR.BufferDescription(10000, VR.BufferUsage.VertexBuffer | VR.BufferUsage.Dynamic));
         _vertexBuffer.Name = "ImGui.NET Vertex Buffer";
-        _indexBuffer = factory.CreateBuffer(new BufferDescription(2000, BufferUsage.IndexBuffer | BufferUsage.Dynamic));
+        _indexBuffer =
+            factory.CreateBuffer(new VR.BufferDescription(2000, VR.BufferUsage.IndexBuffer | VR.BufferUsage.Dynamic));
         _indexBuffer.Name = "ImGui.NET Index Buffer";
         RecreateFontDeviceTexture();
 
-        _projMatrixBuffer = factory.CreateBuffer(new BufferDescription(64, BufferUsage.UniformBuffer | BufferUsage.Dynamic));
+        _projMatrixBuffer =
+            factory.CreateBuffer(new VR.BufferDescription(64, VR.BufferUsage.UniformBuffer | VR.BufferUsage.Dynamic));
         _projMatrixBuffer.Name = "ImGui.NET Projection Buffer";
 
         var vertexShaderBytes = LoadEmbeddedShaderCode("imgui-vertex");
         var fragmentShaderBytes = LoadEmbeddedShaderCode("imgui-frag");
-        _vertexShader = factory.CreateShader(new ShaderDescription(ShaderStages.Vertex, vertexShaderBytes, _gd.BackendType == GraphicsBackend.Metal ? "VS" : "main"));
-        _fragmentShader = factory.CreateShader(new ShaderDescription(ShaderStages.Fragment, fragmentShaderBytes, _gd.BackendType == GraphicsBackend.Metal ? "FS" : "main"));
+        _vertexShader = factory.CreateShader(new VR.ShaderDescription(VR.ShaderStages.Vertex, vertexShaderBytes,
+            _gd.BackendType == VR.GraphicsBackend.Metal ? "VS" : "main"));
+        _fragmentShader = factory.CreateShader(new VR.ShaderDescription(VR.ShaderStages.Fragment, fragmentShaderBytes,
+            _gd.BackendType == VR.GraphicsBackend.Metal ? "FS" : "main"));
 
-        var vertexLayouts = new VertexLayoutDescription[]
+        var vertexLayouts = new[]
         {
-            new VertexLayoutDescription(
-                new VertexElementDescription("in_position", VertexElementSemantic.Position, VertexElementFormat.Float2),
-                new VertexElementDescription("in_texCoord", VertexElementSemantic.TextureCoordinate, VertexElementFormat.Float2),
-                new VertexElementDescription("in_color", VertexElementSemantic.Color, VertexElementFormat.Byte4_Norm))
+            new VR.VertexLayoutDescription(
+                new VR.VertexElementDescription("in_position", VR.VertexElementSemantic.Position,
+                    VR.VertexElementFormat.Float2),
+                new VR.VertexElementDescription("in_texCoord", VR.VertexElementSemantic.TextureCoordinate,
+                    VR.VertexElementFormat.Float2),
+                new VR.VertexElementDescription("in_color", VR.VertexElementSemantic.Color,
+                    VR.VertexElementFormat.Byte4_Norm))
         };
 
-        _mainRl = factory.CreateResourceLayout(new ResourceLayoutDescription(
-            new ResourceLayoutElementDescription("ProjectionMatrixBuffer", ResourceKind.UniformBuffer, ShaderStages.Vertex),
-            new ResourceLayoutElementDescription("MainSampler", ResourceKind.Sampler, ShaderStages.Fragment)));
-        _ftRl = factory.CreateResourceLayout(new ResourceLayoutDescription(
-            new ResourceLayoutElementDescription("MainTexture", ResourceKind.TextureReadOnly, ShaderStages.Fragment),
-            new ResourceLayoutElementDescription("MainSampler", ResourceKind.Sampler, ShaderStages.Fragment)));
+        _mainRl = factory.CreateResourceLayout(new VR.ResourceLayoutDescription(
+            new VR.ResourceLayoutElementDescription("ProjectionMatrixBuffer", VR.ResourceKind.UniformBuffer,
+                VR.ShaderStages.Vertex),
+            new VR.ResourceLayoutElementDescription("MainSampler", VR.ResourceKind.Sampler, VR.ShaderStages.Fragment)));
+        _ftRl = factory.CreateResourceLayout(new VR.ResourceLayoutDescription(
+            new VR.ResourceLayoutElementDescription("MainTexture", VR.ResourceKind.TextureReadOnly,
+                VR.ShaderStages.Fragment),
+            new VR.ResourceLayoutElementDescription("MainSampler", VR.ResourceKind.Sampler, VR.ShaderStages.Fragment)));
 
-        var pd = new GraphicsPipelineDescription(
-            BlendStateDescription.SingleAlphaBlend,
-            new DepthStencilStateDescription(false, false, ComparisonKind.Always),
-            new RasterizerStateDescription(FaceCullMode.None, PolygonFillMode.Solid, FrontFace.Clockwise, false, true),
-            PrimitiveTopology.TriangleList,
-            new ShaderSetDescription(vertexLayouts, new[] { _vertexShader, _fragmentShader }),
+        var pd = new VR.GraphicsPipelineDescription(
+            VR.BlendStateDescription.SingleAlphaBlend,
+            new VR.DepthStencilStateDescription(false, false, VR.ComparisonKind.Always),
+            new VR.RasterizerStateDescription(VR.FaceCullMode.None, VR.PolygonFillMode.Solid, VR.FrontFace.Clockwise,
+                false, true),
+            VR.PrimitiveTopology.TriangleList,
+            new VR.ShaderSetDescription(vertexLayouts, new[] { _vertexShader, _fragmentShader }),
             new[] { _mainRl, _ftRl },
             outputDescription,
-            ResourceBindingModel.Default);
+            VR.ResourceBindingModel.Default);
         _pipeline = factory.CreateGraphicsPipeline(ref pd);
 
-        _mainRs = factory.CreateResourceSet(new(
+        _mainRs = factory.CreateResourceSet(new VR.ResourceSetDescription(
             _mainRl,
             _projMatrixBuffer,
             _gd.PointSampler
         ));
 
-        _ftRs = factory.CreateResourceSet(new(
+        _ftRs = factory.CreateResourceSet(new VR.ResourceSetDescription(
             _ftRl,
-            (TextureView)FontTexture.Texture,
+            (VR.TextureView)FontTexture.Texture,
             _gd.PointSampler
         ));
     }
@@ -322,14 +362,16 @@ public class Backend : QuickImGuiNET.Backend, IDisposable
         if (totalVbSize > _vertexBuffer.SizeInBytes)
         {
             _gd.DisposeWhenIdle(_vertexBuffer);
-            _vertexBuffer = _gd.ResourceFactory.CreateBuffer(new BufferDescription((uint)(totalVbSize * 1.5f), BufferUsage.VertexBuffer | BufferUsage.Dynamic));
+            _vertexBuffer = _gd.ResourceFactory.CreateBuffer(new VR.BufferDescription((uint)(totalVbSize * 1.5f),
+                VR.BufferUsage.VertexBuffer | VR.BufferUsage.Dynamic));
         }
 
         var totalIbSize = (uint)(drawData.TotalIdxCount * sizeof(ushort));
         if (totalIbSize > _indexBuffer.SizeInBytes)
         {
             _gd.DisposeWhenIdle(_indexBuffer);
-            _indexBuffer = _gd.ResourceFactory.CreateBuffer(new BufferDescription((uint)(totalIbSize * 1.5f), BufferUsage.IndexBuffer | BufferUsage.Dynamic));
+            _indexBuffer = _gd.ResourceFactory.CreateBuffer(new VR.BufferDescription((uint)(totalIbSize * 1.5f),
+                VR.BufferUsage.IndexBuffer | VR.BufferUsage.Dynamic));
         }
 
         var pos = drawData.DisplayPos;
@@ -365,7 +407,7 @@ public class Backend : QuickImGuiNET.Backend, IDisposable
         _cl.UpdateBuffer(_projMatrixBuffer, 0, ref mvp);
 
         _cl.SetVertexBuffer(0, _vertexBuffer);
-        _cl.SetIndexBuffer(_indexBuffer, IndexFormat.UInt16);
+        _cl.SetIndexBuffer(_indexBuffer, VR.IndexFormat.UInt16);
         _cl.SetPipeline(_pipeline);
         _cl.SetGraphicsResourceSet(0, _mainRs);
 
@@ -383,7 +425,7 @@ public class Backend : QuickImGuiNET.Backend, IDisposable
                 if (pcmd.UserCallback != IntPtr.Zero)
                     throw new NotImplementedException();
                 _cl.SetGraphicsResourceSet(1, pcmd.TextureId == FontTexture.ID ? _ftRs : _textureRs[pcmd.TextureId]);
-                
+
                 _cl.SetScissorRect(
                     0,
                     (uint)(pcmd.ClipRect.X - pos.X),
@@ -391,21 +433,26 @@ public class Backend : QuickImGuiNET.Backend, IDisposable
                     (uint)(pcmd.ClipRect.Z - pcmd.ClipRect.X),
                     (uint)(pcmd.ClipRect.W - pcmd.ClipRect.Y));
 
-                _cl.DrawIndexed(pcmd.ElemCount, 1, pcmd.IdxOffset + (uint)idxOffset, (int)pcmd.VtxOffset + vtxOffset, 0);
+                _cl.DrawIndexed(pcmd.ElemCount, 1, pcmd.IdxOffset + (uint)idxOffset, (int)pcmd.VtxOffset + vtxOffset,
+                    0);
             }
+
             vtxOffset += cmdList.VtxBuffer.Size;
             idxOffset += cmdList.IdxBuffer.Size;
         }
     }
 
-    private byte[] LoadEmbeddedShaderCode(string name) => _gd.ResourceFactory.BackendType switch
+    private byte[] LoadEmbeddedShaderCode(string name)
     {
-        GraphicsBackend.Direct3D11 => GetEmbeddedResourceBytes(name + ".hlsl.bytes"),
-        GraphicsBackend.OpenGL     => GetEmbeddedResourceBytes(name + ".glsl"),
-        GraphicsBackend.Vulkan     => GetEmbeddedResourceBytes(name + ".spv"),
-        GraphicsBackend.Metal      => GetEmbeddedResourceBytes(name + ".metallib"),
-        _                          => throw new NotImplementedException()
-    };
+        return _gd.ResourceFactory.BackendType switch
+        {
+            VR.GraphicsBackend.Direct3D11 => GetEmbeddedResourceBytes(name + ".hlsl.bytes"),
+            VR.GraphicsBackend.OpenGL => GetEmbeddedResourceBytes(name + ".glsl"),
+            VR.GraphicsBackend.Vulkan => GetEmbeddedResourceBytes(name + ".spv"),
+            VR.GraphicsBackend.Metal => GetEmbeddedResourceBytes(name + ".metallib"),
+            _ => throw new NotImplementedException()
+        };
+    }
 
     private byte[] GetEmbeddedResourceBytes(string resourceName)
     {
@@ -416,31 +463,11 @@ public class Backend : QuickImGuiNET.Backend, IDisposable
         return ret;
     }
 
-    public void Dispose()
-    {
-        _vertexBuffer.Dispose();
-        _indexBuffer.Dispose();
-        _projMatrixBuffer.Dispose();
-
-        _vertexShader.Dispose();
-        _fragmentShader.Dispose();
-
-        _pipeline.Dispose();
-
-        _mainRs.Dispose();
-        _ftRs.Dispose();
-
-        _mainRl.Dispose();
-        _ftRl.Dispose();
-
-        FontTexture.Texture.Target.Dispose();
-        FontTexture.Texture.Dispose();
-
-        Array.ForEach<IntPtr>(Textures.Keys.ToArray(), FreeTexture);
-    }
-
     //--------------------------Windows-----------------------------
-    private void CreateWindow(ImGuiViewportPtr vp) { ImGuiWindow window = new ImGuiWindow(_gd, vp); }
+    private void CreateWindow(ImGuiViewportPtr vp)
+    {
+        var window = new ImGuiWindow(_gd, vp);
+    }
 
     private void DestroyWindow(ImGuiViewportPtr vp)
     {
@@ -508,11 +535,8 @@ public class Backend : QuickImGuiNET.Backend, IDisposable
         var window = (ImGuiWindow)GCHandle.FromIntPtr(vp.PlatformUserData).Target;
         var titlePtr = (byte*)title;
         var count = 0;
-        while (titlePtr[count] != 0)
-        {
-            titlePtr += 1;
-        }
-        window.Window.Title = System.Text.Encoding.ASCII.GetString(titlePtr, count);
+        while (titlePtr[count] != 0) titlePtr += 1;
+        window.Window.Title = Encoding.ASCII.GetString(titlePtr, count);
     }
 
     private void WindowResized(int width, int height)
@@ -521,7 +545,7 @@ public class Backend : QuickImGuiNET.Backend, IDisposable
         _windowHeight = height;
     }
 
-    private void SwapExtraWindows(GraphicsDevice gd)
+    private void SwapExtraWindows(VR.GraphicsDevice gd)
     {
         for (var i = 1; i < _platformIo.Viewports.Size; i++)
         {
@@ -533,14 +557,14 @@ public class Backend : QuickImGuiNET.Backend, IDisposable
     }
 
     private unsafe void UpdateMonitors()
-    {  
+    {
         Marshal.FreeHGlobal(_platformIo.NativePtr->Monitors.Data);
         var numMonitors = SDL2Extensions.SDL_GetNumVideoDisplays();
         var data = Marshal.AllocHGlobal(Unsafe.SizeOf<ImGuiPlatformMonitor>() * numMonitors);
         _platformIo.NativePtr->Monitors = new ImVector(numMonitors, numMonitors, data);
         for (var i = 0; i < numMonitors; i++)
         {
-            Rectangle r;
+            VR.Rectangle r;
             SDL2Extensions.SDL_GetDisplayUsableBounds(i, &r);
             var monitor = _platformIo.Monitors[i];
             monitor.DpiScale = 1f;
@@ -554,13 +578,13 @@ public class Backend : QuickImGuiNET.Backend, IDisposable
     //-------------------------Bindings-----------------------------
     public override IntPtr BindTexture(Texture texture)
     {
-        var t = _gd.ResourceFactory.CreateTexture(new TextureDescription(
+        var t = _gd.ResourceFactory.CreateTexture(new VR.TextureDescription(
             (uint)texture.Width,
             (uint)texture.Height,
             1, (uint)(Math.Floor(Math.Log2(Math.Max(texture.Width, texture.Height))) + 1), 1,
-            PixelFormat.R8_G8_B8_A8_UNorm,
-            TextureUsage.Sampled | TextureUsage.GenerateMipmaps,
-            TextureType.Texture2D
+            VR.PixelFormat.R8_G8_B8_A8_UNorm,
+            VR.TextureUsage.Sampled | VR.TextureUsage.GenerateMipmaps,
+            VR.TextureType.Texture2D
         ));
 
         _gd.UpdateTexture(t, texture.Pixels, 0, 0, 0, (uint)texture.Width, (uint)texture.Height, 1, 0, 0);
@@ -572,7 +596,7 @@ public class Backend : QuickImGuiNET.Backend, IDisposable
         tempCl.Dispose();
 
         var tv = _gd.ResourceFactory.CreateTextureView(t);
-        var rs = _gd.ResourceFactory.CreateResourceSet(new(
+        var rs = _gd.ResourceFactory.CreateResourceSet(new VR.ResourceSetDescription(
             _ftRl,
             tv,
             texture.ScaleMode switch
@@ -590,7 +614,7 @@ public class Backend : QuickImGuiNET.Backend, IDisposable
 
         return id;
     }
-    
+
     public override IntPtr UpdateTexture(Texture texture)
     {
         VR.Texture t = Textures[texture.ID].Target;
@@ -604,7 +628,7 @@ public class Backend : QuickImGuiNET.Backend, IDisposable
         tempCl.Dispose();
 
         var tv = _gd.ResourceFactory.CreateTextureView(t);
-        var rs = _gd.ResourceFactory.CreateResourceSet(new(
+        var rs = _gd.ResourceFactory.CreateResourceSet(new VR.ResourceSetDescription(
             _ftRl,
             tv,
             texture.ScaleMode switch
@@ -620,19 +644,24 @@ public class Backend : QuickImGuiNET.Backend, IDisposable
 
         return texture.ID;
     }
+
     public override void FreeTexture(IntPtr id)
     {
-        TextureView tv = Textures[id];
+        VR.TextureView tv = Textures[id];
         var rs = _textureRs[id];
 
         Textures.Remove(id);
         _textureRs.Remove(id);
 
-        tv.Target.Dispose();  
+        tv.Target.Dispose();
         tv.Dispose();
-        rs.Dispose();        
+        rs.Dispose();
     }
-    private IntPtr GetNextImGuiBindingId() => (IntPtr)(++_lastAssignedId);
+
+    private IntPtr GetNextImGuiBindingId()
+    {
+        return (IntPtr)(++_lastAssignedId);
+    }
 
     private unsafe void RecreateFontDeviceTexture()
     {
@@ -640,12 +669,12 @@ public class Backend : QuickImGuiNET.Backend, IDisposable
         _io.Fonts.SetTexID(FontTexture.ID);
 
         var ft = _gd.ResourceFactory.CreateTexture(
-            TextureDescription.Texture2D(
+            VR.TextureDescription.Texture2D(
                 (uint)width,
                 (uint)height,
-                1,1,
-                PixelFormat.B8_G8_R8_A8_UNorm,
-                TextureUsage.Sampled
+                1, 1,
+                VR.PixelFormat.B8_G8_R8_A8_UNorm,
+                VR.TextureUsage.Sampled
             )
         );
         ft.Name = "ImGui.NET Font Texture";
@@ -654,10 +683,10 @@ public class Backend : QuickImGuiNET.Backend, IDisposable
             ft,
             (IntPtr)pixels,
             (uint)(bytesPerPixel * width * height),
-            0,0,0,
+            0, 0, 0,
             (uint)width,
             (uint)height,
-            1,0,0
+            1, 0, 0
         );
 
         FontTexture.Texture = _gd.ResourceFactory.CreateTextureView(ft);
@@ -668,7 +697,7 @@ public class Backend : QuickImGuiNET.Backend, IDisposable
     //-------------------------Bindings-----------------------------
     public override void UpdateInput(dynamic input)
     {
-        InputSnapshot snapshot = input;
+        VR.InputSnapshot snapshot = input;
         _io.MousePos = snapshot.MousePosition;
         _io.MouseWheel = snapshot.WheelDelta;
 
@@ -677,32 +706,28 @@ public class Backend : QuickImGuiNET.Backend, IDisposable
         var middlePressed = false;
         var rightPressed = false;
         foreach (var me in snapshot.MouseEvents)
-        {
             if (me.Down)
-            {
                 switch (me.MouseButton)
                 {
-                    case MouseButton.Left:
+                    case VR.MouseButton.Left:
                         leftPressed = true;
                         break;
-                    case MouseButton.Middle:
+                    case VR.MouseButton.Middle:
                         middlePressed = true;
                         break;
-                    case MouseButton.Right:
+                    case VR.MouseButton.Right:
                         rightPressed = true;
                         break;
                 }
-            }
-        }
 
-        _io.MouseDown[0] = leftPressed   || snapshot.IsMouseDown(MouseButton.Left);
-        _io.MouseDown[1] = middlePressed || snapshot.IsMouseDown(MouseButton.Right);
-        _io.MouseDown[2] = rightPressed  || snapshot.IsMouseDown(MouseButton.Middle);
+        _io.MouseDown[0] = leftPressed || snapshot.IsMouseDown(VR.MouseButton.Left);
+        _io.MouseDown[1] = middlePressed || snapshot.IsMouseDown(VR.MouseButton.Right);
+        _io.MouseDown[2] = rightPressed || snapshot.IsMouseDown(VR.MouseButton.Middle);
 
         if (_io.ConfigFlags.HasFlag(ImGuiConfigFlags.ViewportsEnable))
             unsafe
             {
-                int x,y;
+                int x, y;
                 var buttons = SDL2Extensions.SDL_GetGlobalMouseState(&x, &y);
                 _io.MouseDown[0] = (buttons & 0b0001) != 0;
                 _io.MouseDown[1] = (buttons & 0b0010) != 0;
@@ -711,10 +736,7 @@ public class Backend : QuickImGuiNET.Backend, IDisposable
             }
 
         var keyCharPresses = snapshot.KeyCharPresses;
-        foreach (var c in keyCharPresses)
-        {
-            _io.AddInputCharacter(c);
-        }
+        foreach (var c in keyCharPresses) _io.AddInputCharacter(c);
 
         var keyEvents = snapshot.KeyEvents;
         foreach (var keyEvent in keyEvents)
@@ -722,23 +744,23 @@ public class Backend : QuickImGuiNET.Backend, IDisposable
             _io.KeysDown[(int)keyEvent.Key] = keyEvent.Down;
             switch (keyEvent.Key)
             {
-                case Key.ControlLeft:
+                case VR.Key.ControlLeft:
                     _controlDown = keyEvent.Down;
                     break;
-                case Key.ShiftLeft:
+                case VR.Key.ShiftLeft:
                     _shiftDown = keyEvent.Down;
                     break;
-                case Key.AltLeft:
+                case VR.Key.AltLeft:
                     _altDown = keyEvent.Down;
                     break;
-                case Key.WinLeft:
+                case VR.Key.WinLeft:
                     _winKeyDown = keyEvent.Down;
                     break;
             }
         }
 
-        _io.KeyCtrl  = _controlDown;
-        _io.KeyAlt   = _altDown;
+        _io.KeyCtrl = _controlDown;
+        _io.KeyAlt = _altDown;
         _io.KeyShift = _shiftDown;
         _io.KeySuper = _winKeyDown;
 
@@ -753,26 +775,26 @@ public class Backend : QuickImGuiNET.Backend, IDisposable
 
     private void SetKeyMappings()
     {
-        _io.KeyMap[(int)ImGuiKey.Tab] = (int)Key.Tab;
-        _io.KeyMap[(int)ImGuiKey.LeftArrow] = (int)Key.Left;
-        _io.KeyMap[(int)ImGuiKey.RightArrow] = (int)Key.Right;
-        _io.KeyMap[(int)ImGuiKey.UpArrow] = (int)Key.Up;
-        _io.KeyMap[(int)ImGuiKey.DownArrow] = (int)Key.Down;
-        _io.KeyMap[(int)ImGuiKey.PageUp] = (int)Key.PageUp;
-        _io.KeyMap[(int)ImGuiKey.PageDown] = (int)Key.PageDown;
-        _io.KeyMap[(int)ImGuiKey.Home] = (int)Key.Home;
-        _io.KeyMap[(int)ImGuiKey.End] = (int)Key.End;
-        _io.KeyMap[(int)ImGuiKey.Delete] = (int)Key.Delete;
-        _io.KeyMap[(int)ImGuiKey.Backspace] = (int)Key.BackSpace;
-        _io.KeyMap[(int)ImGuiKey.Enter] = (int)Key.Enter;
-        _io.KeyMap[(int)ImGuiKey.Escape] = (int)Key.Escape;
-        _io.KeyMap[(int)ImGuiKey.Space] = (int)Key.Space;
-        _io.KeyMap[(int)ImGuiKey.A] = (int)Key.A;
-        _io.KeyMap[(int)ImGuiKey.C] = (int)Key.C;
-        _io.KeyMap[(int)ImGuiKey.V] = (int)Key.V;
-        _io.KeyMap[(int)ImGuiKey.X] = (int)Key.X;
-        _io.KeyMap[(int)ImGuiKey.Y] = (int)Key.Y;
-        _io.KeyMap[(int)ImGuiKey.Z] = (int)Key.Z;
-        _io.KeyMap[(int)ImGuiKey.Space] = (int)Key.Space;
+        _io.KeyMap[(int)ImGuiKey.Tab] = (int)VR.Key.Tab;
+        _io.KeyMap[(int)ImGuiKey.LeftArrow] = (int)VR.Key.Left;
+        _io.KeyMap[(int)ImGuiKey.RightArrow] = (int)VR.Key.Right;
+        _io.KeyMap[(int)ImGuiKey.UpArrow] = (int)VR.Key.Up;
+        _io.KeyMap[(int)ImGuiKey.DownArrow] = (int)VR.Key.Down;
+        _io.KeyMap[(int)ImGuiKey.PageUp] = (int)VR.Key.PageUp;
+        _io.KeyMap[(int)ImGuiKey.PageDown] = (int)VR.Key.PageDown;
+        _io.KeyMap[(int)ImGuiKey.Home] = (int)VR.Key.Home;
+        _io.KeyMap[(int)ImGuiKey.End] = (int)VR.Key.End;
+        _io.KeyMap[(int)ImGuiKey.Delete] = (int)VR.Key.Delete;
+        _io.KeyMap[(int)ImGuiKey.Backspace] = (int)VR.Key.BackSpace;
+        _io.KeyMap[(int)ImGuiKey.Enter] = (int)VR.Key.Enter;
+        _io.KeyMap[(int)ImGuiKey.Escape] = (int)VR.Key.Escape;
+        _io.KeyMap[(int)ImGuiKey.Space] = (int)VR.Key.Space;
+        _io.KeyMap[(int)ImGuiKey.A] = (int)VR.Key.A;
+        _io.KeyMap[(int)ImGuiKey.C] = (int)VR.Key.C;
+        _io.KeyMap[(int)ImGuiKey.V] = (int)VR.Key.V;
+        _io.KeyMap[(int)ImGuiKey.X] = (int)VR.Key.X;
+        _io.KeyMap[(int)ImGuiKey.Y] = (int)VR.Key.Y;
+        _io.KeyMap[(int)ImGuiKey.Z] = (int)VR.Key.Z;
+        _io.KeyMap[(int)ImGuiKey.Space] = (int)VR.Key.Space;
     }
 }
