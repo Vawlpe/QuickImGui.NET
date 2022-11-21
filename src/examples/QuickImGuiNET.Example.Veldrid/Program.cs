@@ -3,6 +3,7 @@ using System.Reflection;
 using ImGuiNET;
 using Serilog;
 using Tomlyn;
+using Tomlyn.Model;
 using VRBK = QuickImGuiNET.Veldrid;
 
 namespace QuickImGuiNET.Example.Veldrid;
@@ -19,14 +20,14 @@ public class Program
         Log.Logger = new LoggerConfiguration()
             .WriteTo.Console(
                 outputTemplate: "[{Timestamp:HH:mm:ss} {Level:u3}] {Message:lj}{NewLine}{Exception}") // Log to console
-            .WriteTo.File("QIMGUIN.log",
+            .WriteTo.File("QIMGUIN.log", rollingInterval: RollingInterval.Day,
                 outputTemplate: "[{Timestamp:HH:mm:ss} {Level:u3}] {Message:lj}{NewLine}{Exception}") // Log to file
             .MinimumLevel.Debug() // Set minimum logging level
             .CreateLogger();
-        Log.Information("QUIMGUIN v0.1");
+        Log.Information("QIMGUIN v0.1");
 
         // Re-usable vars for cfg sinks/sources
-        var cfg_toml = new Config.Toml("QUIMGUIN.cfg", ref backend);
+        var cfg_toml = new Config.Toml("QIMGUIN.cfg", ref backend);
         var cfg_cli = new Config.Cli(args, ref backend);
 
         // Backend shadow ctor
@@ -36,7 +37,26 @@ public class Program
             // Add Config to shadow backend
             Config = new Config
             {
-                _default = Toml.ToModel(""),
+                _default = Toml.ToModel(string.Join('\n',
+                    @"[window]",
+                    @"width = 1280",
+                    @"height = 720",
+                    "\n[veldrid]",
+                    @"backend = -1",
+                    "\n[serilog]",
+                    @"minimumLevel = ""Debug""",
+                    "\n[serilog.using]",
+                    @"Console = ""Serilog.Sinks.Console""",
+                    @"File = ""Serilog.Sinks.File""",
+                    "\n[serilog.writeTo.Console]",
+                    @"outputTemplate = ""[{Timestamp:HH:mm:ss} {Level:u3}] {Message:lj}{NewLine}{Exception}""",
+                    "\n[serilog.writeTo.File]",
+                    @"outputTemplate =""{Timestamp:yyyy-MM-dd HH:mm:ss.fff zzz} [{Level:u3}] {Message:lj}{NewLine}{Exception}""",
+                    @"path = ""QIMGUIN.log""",
+                    @"fileSizeLimitBytes = ""2000000""",
+                    @"rollOnFileSizeLimit = ""true""",
+                    @"retainedFileCountLimit = ""10""",
+                    @"rollingInterval = ""Day""")),
                 Sinks = new IConfigSink[]
                 {
                     cfg_toml,
@@ -48,16 +68,10 @@ public class Program
                     cfg_cli
                 }
             },
-            // Add Logger to shadow backend
-            Logger = new LoggerConfiguration()
-                .WriteTo
-                .Console( // Log to console
-                    outputTemplate: "[{Timestamp:HH:mm:ss} {Level:u3}] {Message:lj}{NewLine}{Exception}")
-                .WriteTo.File("QIMGUIN.log", // Log to file
-                    outputTemplate:
-                    "{Timestamp:yyyy-MM-dd HH:mm:ss.fff zzz} [{Level:u3}] {Message:lj}{NewLine}{Exception}")
-                .MinimumLevel.Debug() // Set minimum logging level
-                .CreateLogger(),
+
+            // Add default Logger to shadow backend
+            Logger = Log.Logger,
+
             // Add Events to shadow backend
             Events = new Dictionary<string, Event>
             {
@@ -69,6 +83,7 @@ public class Program
                 },
                 { "widgetReg", new Event() }
             },
+
             // Add Widget Registry to shadow backend
             WidgetReg = new Dictionary<string, Widget>()
         };
@@ -79,11 +94,24 @@ public class Program
         backend.Config.From(backend.Config.Sources[0]);
         backend.Config.From(backend.Config.Sources[1]);
 
-        backend.Logger.Information("Config Done, ready to initialize"
-                                   + $"\n\t- MainViewportSize: ({backend.Config["window"]["width"]}x{backend.Config["window"]["height"]})"
-                                   + $"\n\t- VeldridBackendIndex: {backend.Config["veldrid"]["backend"]}");
+        backend.Logger.Information("Initializing new logger using config");
+        Log.CloseAndFlush();
+        Log.Logger = new LoggerConfiguration()
+            .ReadFrom.KeyValuePairs(((TomlTable)backend.Config["serilog"]).SelectMany(kvp =>
+                kvp.Key switch
+                {
+                    "using" => ((TomlTable)kvp.Value).Select(use =>
+                        new KeyValuePair<string, string>($"using:{use.Key}", (string)use.Value)),
+                    "writeTo" => ((TomlTable)kvp.Value).SelectMany(sink =>
+                        ((TomlTable)sink.Value).Select(o =>
+                            new KeyValuePair<string, string>($"write-to:{sink.Key}.{o.Key}", o.Value.ToString()))),
+                    _ => new[] { new KeyValuePair<string, string>(kvp.Key, (string)kvp.Value) }
+                }
+            )).CreateLogger();
+        backend.Logger = Log.Logger;
 
         // Initialize shadow -> ready backend
+        backend.Logger.Information("Config Done, ready to initialize Veldrid Backend");
         backend.Init();
 
         // Auto-register widgets to backend
@@ -182,7 +210,7 @@ public class Program
         }
     }
 
-    public static void Draw()
+    private static void Draw()
     {
         ImGui.DockSpaceOverViewport();
         if (ImGui.BeginMainMenuBar())
@@ -205,7 +233,7 @@ public class Program
             widget.Render();
     }
 
-    public static void Update(float deltaSeconds)
+    private static void Update(float deltaSeconds)
     {
         foreach (var widget in backend.WidgetReg.Values)
             widget.Update(deltaSeconds);

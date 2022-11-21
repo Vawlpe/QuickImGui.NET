@@ -9,8 +9,8 @@ public partial class Config
 {
     public class Cli : IConfigSink, IConfigSource
     {
-        private readonly Backend? _backend;
         private readonly string[] _args;
+        private readonly Backend? _backend;
 
         public Cli(string[] args, ref Backend backend)
         {
