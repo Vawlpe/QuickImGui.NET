@@ -2,18 +2,22 @@ using Serilog;
 using Tomlyn.Model;
 
 namespace QuickImGuiNET;
+
 public partial class Config
 {
     public class Toml : IConfigSink, IConfigSource
     {
-        private readonly string _path;
         private readonly Backend? _backend;
-        private ILogger Logger => _backend is null ? Log.Logger : _backend.Logger;
+        private readonly string _path;
+
         public Toml(string path, ref Backend backend)
         {
             _path = Path.GetFullPath(path);
             _backend = backend;
         }
+
+        private ILogger Logger => _backend is null ? Log.Logger : _backend.Logger;
+
         public bool Write(TomlTable data)
         {
             Logger.Information("Saving TOML config file");
@@ -47,7 +51,9 @@ public partial class Config
                 {
                     var fileText = File.ReadAllText(_path);
                     if (Tomlyn.Toml.Validate(Tomlyn.Toml.Parse(fileText)).HasErrors)
+                    {
                         Logger.Information("Could not validate TOML config file.");
+                    }
                     else
                     {
                         Logger.Information("Loading TOML config file");
@@ -59,6 +65,7 @@ public partial class Config
                     Logger.Information("No TOML config file found, creating new config w/ current options");
                     File.WriteAllText(_path, Tomlyn.Toml.FromModel(data));
                 }
+
                 return true;
             }
             catch (Exception e)

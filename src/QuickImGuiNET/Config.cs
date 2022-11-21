@@ -9,6 +9,12 @@ public partial class Config
     public IConfigSink[] Sinks;
     public IConfigSource[] Sources;
 
+    public dynamic this[string key]
+    {
+        get => _config[key];
+        set => _config[key] = value;
+    }
+
     public void LoadDefault()
     {
         _config = _default;
@@ -27,10 +33,10 @@ public partial class Config
 
 public interface IConfigSink
 {
-    public abstract bool Write(TomlTable data);
+    public bool Write(TomlTable data);
 }
 
 public interface IConfigSource
 {
-    public abstract bool Read(ref TomlTable data);
+    public bool Read(ref TomlTable data);
 }

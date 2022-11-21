@@ -1,22 +1,18 @@
 #pragma warning disable CS8618
 
-using ImGuiNET;
 using System.Runtime.InteropServices;
+using ImGuiNET;
 using Veldrid;
 using Veldrid.Sdl2;
 using Veldrid.StartupUtilities;
 
 namespace QuickImGuiNET.Veldrid;
+
 public class ImGuiWindow : IDisposable
 {
     private readonly GCHandle _gcHandle;
     private readonly GraphicsDevice _gd;
     private readonly ImGuiViewportPtr _vp;
-    private readonly Sdl2Window _window;
-    private readonly Swapchain _sc;
-
-    public Sdl2Window Window => _window;
-    public Swapchain Swapchain => _sc;
 
     public ImGuiWindow(GraphicsDevice gd, ImGuiViewportPtr vp)
     {
@@ -24,39 +20,29 @@ public class ImGuiWindow : IDisposable
         _gd = gd;
         _vp = vp;
 
-        SDL_WindowFlags flags = SDL_WindowFlags.Hidden;
-        if ((vp.Flags & ImGuiViewportFlags.NoTaskBarIcon) != 0)
-        {
-            flags |= SDL_WindowFlags.SkipTaskbar;
-        }
+        var flags = SDL_WindowFlags.Hidden;
+        if ((vp.Flags & ImGuiViewportFlags.NoTaskBarIcon) != 0) flags |= SDL_WindowFlags.SkipTaskbar;
         if ((vp.Flags & ImGuiViewportFlags.NoDecoration) != 0)
-        {
             flags |= SDL_WindowFlags.Borderless;
-        }
         else
-        {
             flags |= SDL_WindowFlags.Resizable;
-        }
 
-        if ((vp.Flags & ImGuiViewportFlags.TopMost) != 0)
-        {
-            flags |= SDL_WindowFlags.AlwaysOnTop;
-        }
+        if ((vp.Flags & ImGuiViewportFlags.TopMost) != 0) flags |= SDL_WindowFlags.AlwaysOnTop;
 
-        _window = new Sdl2Window(
+        Window = new Sdl2Window(
             "No Title Yet",
             (int)vp.Pos.X, (int)vp.Pos.Y,
             (int)vp.Size.X, (int)vp.Size.Y,
             flags,
             false);
-        _window.Resized += () => _vp.PlatformRequestResize = true;
-        _window.Moved += p => _vp.PlatformRequestMove = true;
-        _window.Closed += () => _vp.PlatformRequestClose = true;
+        Window.Resized += () => _vp.PlatformRequestResize = true;
+        Window.Moved += p => _vp.PlatformRequestMove = true;
+        Window.Closed += () => _vp.PlatformRequestClose = true;
 
-        SwapchainSource scSource = VeldridStartup.GetSwapchainSource(_window);
-        SwapchainDescription scDesc = new SwapchainDescription(scSource, (uint)_window.Width, (uint)_window.Height, null, true, false);
-        _sc = _gd.ResourceFactory.CreateSwapchain(scDesc);
-        _window.Resized += () => _sc.Resize((uint)_window.Width, (uint)_window.Height);
+        var scSource = VeldridStartup.GetSwapchainSource(Window);
+        var scDesc = new SwapchainDescription(scSource, (uint)Window.Width, (uint)Window.Height, null, true, false);
+        Swapchain = _gd.ResourceFactory.CreateSwapchain(scDesc);
+        Window.Resized += () => Swapchain.Resize((uint)Window.Width, (uint)Window.Height);
 
         vp.PlatformUserData = (IntPtr)_gcHandle;
     }
@@ -66,18 +52,25 @@ public class ImGuiWindow : IDisposable
         _gcHandle = GCHandle.Alloc(this);
         _gd = gd;
         _vp = vp;
-        _window = window;
+        Window = window;
         vp.PlatformUserData = (IntPtr)_gcHandle;
     }
 
-    public void Update() => _window.PumpEvents();
+    public Sdl2Window Window { get; }
+
+    public Swapchain Swapchain { get; }
 
     public void Dispose()
     {
         _gd.WaitForIdle(); // TODO: Shouldn't be necessary, but Vulkan backend trips a validation error (swapchain in use when disposed).
-        _sc.Dispose();
-        _window.Close();
+        Swapchain.Dispose();
+        Window.Close();
         _gcHandle.Free();
+    }
+
+    public void Update()
+    {
+        Window.PumpEvents();
     }
 }
 

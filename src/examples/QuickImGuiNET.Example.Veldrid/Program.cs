@@ -1,15 +1,17 @@
-using ImGuiNET;
 using System.Numerics;
 using System.Reflection;
-using VRBK = QuickImGuiNET.Veldrid;
+using ImGuiNET;
 using Serilog;
 using Tomlyn;
+using VRBK = QuickImGuiNET.Veldrid;
 
 namespace QuickImGuiNET.Example.Veldrid;
 
 public class Program
 {
     public static Backend backend;
+
+    public static bool showDemoWindow;
 
     public static void Main(string[] args)
     {
@@ -22,17 +24,17 @@ public class Program
             .MinimumLevel.Debug() // Set minimum logging level
             .CreateLogger();
         Log.Information("QUIMGUIN v0.1");
-        
+
         // Re-usable vars for cfg sinks/sources
         var cfg_toml = new Config.Toml("QUIMGUIN.cfg", ref backend);
         var cfg_cli = new Config.Cli(args, ref backend);
 
         // Backend shadow ctor
         Log.Logger.Information("Initializing Veldrid Backend");
-        backend = new VRBK.Backend()
+        backend = new VRBK.Backend
         {
             // Add Config to shadow backend
-            Config = new Config()
+            Config = new Config
             {
                 _default = Toml.ToModel(""),
                 Sinks = new IConfigSink[]
@@ -57,81 +59,82 @@ public class Program
                 .MinimumLevel.Debug() // Set minimum logging level
                 .CreateLogger(),
             // Add Events to shadow backend
-            Events = new()
+            Events = new Dictionary<string, Event>
             {
                 {
-                    "onMainMenuBar", new(new()
+                    "onMainMenuBar", new Event(new Dictionary<string, Event>
                     {
-                        { "Debug", new() }
+                        { "Debug", new Event() }
                     })
                 },
-                { "widgetReg", new() }
+                { "widgetReg", new Event() }
             },
             // Add Widget Registry to shadow backend
-            WidgetReg = new()
+            WidgetReg = new Dictionary<string, Widget>()
         };
-        
+
         // Loading config sources
         backend.Logger.Information($"Loading default config + ({backend.Config.Sources.Length}) source(s)");
         backend.Config.LoadDefault();
         backend.Config.From(backend.Config.Sources[0]);
         backend.Config.From(backend.Config.Sources[1]);
-        
-        //TODO replace temp values
-        const int width = 1280;
-        const int height = 720;
-        const int veldridBackendIndex = -1;
-       backend.Logger.Information("Config Done, ready to initialize"
-                        + $"\n\t- MainViewportSize: ({width}x{height})"
-                        + $"\n\t- VeldridBackendIndex: {veldridBackendIndex}");
-       
-       // Initialize shadow -> ready backend
-       backend.Init(width, height, veldridBackendIndex);
 
-       // Auto-register widgets to backend
-       new ExampleWidget(backend, "ExampleWidget##example00") {
-            Visible        = true,
-            RenderMode     = WidgetRenderMode.Window,
-            Position       = new(100, 100),
-            Size           = new(150, 150),
-            SizeCond       = ImGuiCond.FirstUseEver,
-            PositionCond   = ImGuiCond.FirstUseEver,
-            IconRenderSize = new(128, 128)
+        backend.Logger.Information("Config Done, ready to initialize"
+                                   + $"\n\t- MainViewportSize: ({backend.Config["window"]["width"]}x{backend.Config["window"]["height"]})"
+                                   + $"\n\t- VeldridBackendIndex: {backend.Config["veldrid"]["backend"]}");
+
+        // Initialize shadow -> ready backend
+        backend.Init();
+
+        // Auto-register widgets to backend
+        new ExampleWidget(backend, "ExampleWidget##example00")
+        {
+            Visible = true,
+            RenderMode = WidgetRenderMode.Window,
+            Position = new Vector2(100, 100),
+            Size = new Vector2(150, 150),
+            SizeCond = ImGuiCond.FirstUseEver,
+            PositionCond = ImGuiCond.FirstUseEver,
+            IconRenderSize = new Vector2(128, 128)
         };
-        new ExampleWidget(backend, "ExampleWidget##example01") {
-            Visible        = true,
-            RenderMode     = WidgetRenderMode.Window,
-            Position       = new(255, 100),
-            Size           = new(275, 275),
-            SizeCond       = ImGuiCond.FirstUseEver,
-            PositionCond   = ImGuiCond.FirstUseEver,
-            IconRenderSize = new(256, 256)
+        new ExampleWidget(backend, "ExampleWidget##example01")
+        {
+            Visible = true,
+            RenderMode = WidgetRenderMode.Window,
+            Position = new Vector2(255, 100),
+            Size = new Vector2(275, 275),
+            SizeCond = ImGuiCond.FirstUseEver,
+            PositionCond = ImGuiCond.FirstUseEver,
+            IconRenderSize = new Vector2(256, 256)
         };
-        new Widgets.FileManager(backend, "FileManager##example00") {
-            Visible         = false,
-            RenderMode      = WidgetRenderMode.Modal,
-            Position        = ImGui.GetMainViewport().GetWorkCenter() - new Vector2(250, 250),
-            Size            = new(500, 500),
-            SizeCond        = ImGuiCond.FirstUseEver,
-            PositionCond    = ImGuiCond.FirstUseEver,
-            Mode            = Widgets.FileManager.SelectionMode.SaveFile,
-            CurrentPath     = Path.GetDirectoryName(Assembly.GetEntryAssembly()?.Location) ?? Path.GetFullPath("~"),
+        new Widgets.FileManager(backend, "FileManager##example00")
+        {
+            Visible = false,
+            RenderMode = WidgetRenderMode.Modal,
+            Position = ImGui.GetMainViewport().GetWorkCenter() - new Vector2(250, 250),
+            Size = new Vector2(500, 500),
+            SizeCond = ImGuiCond.FirstUseEver,
+            PositionCond = ImGuiCond.FirstUseEver,
+            Mode = Widgets.FileManager.SelectionMode.SaveFile,
+            CurrentPath = Path.GetDirectoryName(Assembly.GetEntryAssembly()?.Location) ?? Path.GetFullPath("~"),
             ShowHiddenFiles = true,
             ShowSystemFiles = true,
-            FileTypeQueries = new() {
-                {"Images", new() { ".png", ".jpg", ".jpeg" }},
-                {"All",    new() { "*"                  }}
+            FileTypeQueries = new Dictionary<string, List<string>>
+            {
+                { "Images", new List<string> { ".png", ".jpg", ".jpeg" } },
+                { "All", new List<string> { "*" } }
             },
-            CurrentFTQuery  = "All"
+            CurrentFTQuery = "All"
         };
-        new Widgets.MemoryEditor(backend, "MemoryView##example00") {
-            Visible              = false,
-            RenderMode           = WidgetRenderMode.Window,
-            Position             = new(100, 380),
-            Size                 = new(500, 360),
-            SizeCond             = ImGuiCond.FirstUseEver,
-            PositionCond         = ImGuiCond.FirstUseEver,
-            WindowFlags          = ImGuiWindowFlags.NoScrollbar,
+        new Widgets.MemoryEditor(backend, "MemoryView##example00")
+        {
+            Visible = false,
+            RenderMode = WidgetRenderMode.Window,
+            Position = new Vector2(100, 380),
+            Size = new Vector2(500, 360),
+            SizeCond = ImGuiCond.FirstUseEver,
+            PositionCond = ImGuiCond.FirstUseEver,
+            WindowFlags = ImGuiWindowFlags.NoScrollbar,
             ReadOnly = false,
             Cols = 16,
             OptShowOptions = true,
@@ -179,8 +182,6 @@ public class Program
         }
     }
 
-    public static bool showDemoWindow = false;
-
     public static void Draw()
     {
         ImGui.DockSpaceOverViewport();
@@ -188,7 +189,7 @@ public class Program
         {
             if (ImGui.BeginMenu("Debug"))
             {
-                ImGui.MenuItem("Show Demo Window", String.Empty, ref showDemoWindow);
+                ImGui.MenuItem("Show Demo Window", string.Empty, ref showDemoWindow);
                 backend.Events["onMainMenuBar"]["Debug"].Invoke();
                 ImGui.EndMenu();
             }
