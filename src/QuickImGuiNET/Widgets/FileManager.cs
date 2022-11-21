@@ -21,6 +21,8 @@ public static partial class Widgets
             SaveFolder = Save | Folder
         }
 
+        private readonly ConfirmPrompt Prompt;
+
         public string CurrentFTQuery;
         public string CurrentPath;
         private FileInfo[]? FilesFound;
@@ -28,7 +30,6 @@ public static partial class Widgets
 
         private DirectoryInfo[]? FoldersFound;
         public SelectionMode Mode;
-        private readonly ConfirmPrompt Prompt;
 
         public string Selected = string.Empty;
         public bool ShowHiddenFiles;

@@ -13,6 +13,8 @@ namespace QuickImGuiNET.Veldrid;
 public class Backend : QuickImGuiNET.Backend, IDisposable
 {
     private static readonly Vector3 _clearColor = new(0.45f, 0.55f, 0.6f);
+    private readonly Vector2 _scaleFactor = Vector2.One;
+    private readonly Dictionary<IntPtr, VR.ResourceSet> _textureRs = new();
     private bool _altDown;
     private VR.CommandList _cl;
 
@@ -43,14 +45,12 @@ public class Backend : QuickImGuiNET.Backend, IDisposable
     private VR.Pipeline _pipeline;
     private ImGuiPlatformIOPtr _platformIo;
     private VR.DeviceBuffer _projMatrixBuffer;
-    private readonly Vector2 _scaleFactor = Vector2.One;
     private Platform_SetWindowFocus _setWindowFocus;
     private Platform_SetWindowPos _setWindowPos;
     private Platform_SetWindowSize _setWindowSize;
     private Platform_SetWindowTitle _setWindowTitle;
     private bool _shiftDown;
     private Platform_ShowWindow _showWindow;
-    private readonly Dictionary<IntPtr, VR.ResourceSet> _textureRs = new();
 
     // Veldrid objects
     private VR.DeviceBuffer _vertexBuffer;
@@ -87,8 +87,8 @@ public class Backend : QuickImGuiNET.Backend, IDisposable
 
     public override unsafe void Init()
     {
-        var width = Config["window"]["width"];
-        var height = Config["window"]["height"];
+        var width = (int)Config["window"]["width"];
+        var height = (int)Config["window"]["height"];
         var gfxbk = Config["veldrid"]["backend"];
         if (gfxbk == -1)
             gfxbk = VR.GraphicsDevice.IsBackendSupported(VR.GraphicsBackend.Vulkan)
