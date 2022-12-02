@@ -6,18 +6,18 @@ namespace QuickImGuiNET;
 public abstract class Widget
 {
     public readonly string Name;
-    private bool _visible;
-
-    protected Backend backend;
-    public bool ChildBorder;
-    public Vector2 Position = Vector2.Zero;
-    public ImGuiCond PositionCond = ImGuiCond.Always;
+    public bool Visible = false;
     public WidgetRenderMode RenderMode = WidgetRenderMode.Raw;
     public Vector2 Size = Vector2.Zero;
-    public ImGuiCond SizeCond = ImGuiCond.Always;
-    public bool Visible;
+    public ImGuiCond SizeCond = ImGuiCond.None;
+    public Vector2 Position = Vector2.Zero;
+    public ImGuiCond PositionCond = ImGuiCond.None;
     public ImGuiWindowFlags WindowFlags = ImGuiWindowFlags.None;
+    public bool ChildBorder;
 
+    private bool _visible = false;
+    protected Backend backend;
+    
     public Widget(Backend backend, string? Name = null, bool AutoRegister = true)
     {
         this.Name = Name ?? $"{DateTime.UtcNow.ToBinary()}";
@@ -31,9 +31,16 @@ public abstract class Widget
                 { "toggle", new Event() }
             }));
             backend.WidgetReg.Add(Name ?? $"{DateTime.UtcNow.Millisecond}", this);
+            backend.Events["onMainMenuBar"]["Debug"].Hook += RenderOnMainMenuBar_Debug;
         }
 
         this.backend = backend;
+    }
+    
+    private dynamic? RenderOnMainMenuBar_Debug(params dynamic[]? args)
+    {
+        ImGui.MenuItem($"Open {Name.Replace("#", @"\#")}", string.Empty, ref Visible);
+        return null;
     }
 
     public abstract void RenderContent();

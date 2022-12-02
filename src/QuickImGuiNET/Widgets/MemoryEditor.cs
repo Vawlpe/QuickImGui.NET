@@ -54,10 +54,7 @@ public static partial class Widgets
         private Sizes s;
         public Action<byte[], int, byte>? WriteFn; // optional handler to write bytes.
 
-        public MemoryEditor(Backend backend, string Name, bool AutoRegister = true) : base(backend, Name, AutoRegister)
-        {
-            backend.Events["onMainMenuBar"]["Debug"].Hook += RenderOnMainMenuBar_Debug;
-        }
+        public MemoryEditor(Backend backend, string Name, bool AutoRegister = true) : base(backend, Name, AutoRegister) {}
 
         public void GotoAddrAndHighlight(int addr_min, int addr_max)
         {
@@ -92,19 +89,6 @@ public static partial class Widgets
             }
 
             s.WindowWidth = s.PosAsciiEnd + style.ScrollbarSize + style.WindowPadding.X * 2 + s.GlyphWidth;
-        }
-
-        public override void Render()
-        {
-            Size = new Vector2(s.WindowWidth, s.WindowWidth * 0.6f);
-            ImGui.SetNextWindowSizeConstraints(Vector2.Zero, new Vector2(s.WindowWidth, float.MaxValue));
-            base.Render();
-        }
-
-        private dynamic? RenderOnMainMenuBar_Debug(params dynamic[]? args)
-        {
-            ImGui.MenuItem($"Open {Name.Replace("#", @"\#")}", string.Empty, ref Visible);
-            return null;
         }
 
         public override unsafe void RenderContent()

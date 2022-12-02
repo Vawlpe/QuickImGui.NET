@@ -27,16 +27,13 @@ public partial class Config
             {
                 var sb = new StringBuilder($"dotnet {Assembly.GetEntryAssembly()?.GetName().Name}.dll");
 
-                string RecurseTable(TomlTable tbl, string p)
-                {
-                    return tbl.Aggregate(string.Empty,
-                        (current, kvp) => current + kvp.Value.GetType().Name switch
-                        {
-                            "TomlTable" => RecurseTable((TomlTable)kvp.Value,
-                                p == string.Empty ? kvp.Key : $"{p}/{kvp.Key}"),
-                            _ => $" --{p}/{kvp.Key}={kvp.Value.GetType().Name}:{kvp.Value}"
-                        });
-                }
+                string RecurseTable(TomlTable tbl, string p) => tbl.Aggregate(string.Empty,
+                    (current, kvp) => current + kvp.Value.GetType().Name switch
+                    {
+                        "TomlTable" => RecurseTable((TomlTable)kvp.Value,
+                            p == string.Empty ? kvp.Key : $"{p}/{kvp.Key}"),
+                        _ => $" --{p}/{kvp.Key}={kvp.Value.GetType().Name}:{kvp.Value}"
+                    });
 
                 var p = string.Empty;
                 sb.Append(RecurseTable(data, p));
