@@ -37,8 +37,6 @@ public static partial class Widgets
 
         public FileManager(Backend backend, string Name, bool AutoRegister = true) : base(backend, Name, AutoRegister)
         {
-            backend.Events["onMainMenuBar"]["Debug"].Hook += RenderOnMainMenuBar_Debug;
-
             //Create ConfirmPrompt Widget w/o auto-registration
             Prompt = new ConfirmPrompt(backend, $"{Name}_ConfirmPrompt001", false)
             {
@@ -124,14 +122,9 @@ public static partial class Widgets
                             RefreshFiles();
                         }
                         else if (Mode.HasFlag(SelectionMode.Save))
-                        {
                             Prompt.Open();
-                        }
                         else
-                        {
                             Close();
-                        }
-
                         break;
                     }
 
@@ -193,12 +186,6 @@ public static partial class Widgets
             // This would break if the prompt was auto-registered to backend.WidgetReg
             // as that would try to draw the confirmation prompt on it's own instead of here
             Prompt.Render();
-        }
-
-        private dynamic? RenderOnMainMenuBar_Debug(params dynamic[]? args)
-        {
-            ImGui.MenuItem($"Open {Name.Replace("#", @"\#")}", string.Empty, ref Visible);
-            return null;
         }
 
         private void RefreshFiles()
