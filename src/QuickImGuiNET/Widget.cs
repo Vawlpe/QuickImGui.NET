@@ -127,18 +127,22 @@ public abstract class Widget
     public void Open()
     {
         Visible = true;
-        backend.Events["widgetReg"][Name]["open"].Invoke(this);
+        if (backend.Events["widgetReg"].Children.ContainsKey(Name))
+            backend.Events["widgetReg"][Name]["open"].Invoke(this);
     }
 
     public void Close()
     {
         Visible = false;
-        backend.Events["widgetReg"][Name]["close"].Invoke(this);
+        if (backend.Events["widgetReg"].Children.ContainsKey(Name))
+            backend.Events["widgetReg"][Name]["close"].Invoke(this);
     }
 
     public void Toggle()
     {
         Visible = !Visible;
+        if (!backend.Events["widgetReg"].Children.ContainsKey(Name))
+            return;
         if (Visible)
             backend.Events["widgetReg"][Name]["close"].Invoke(this);
         else
