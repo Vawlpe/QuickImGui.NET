@@ -10,15 +10,15 @@ public partial class Config
     public class Cli : IConfigSink, IConfigSource
     {
         private readonly string[] _args;
-        private readonly Backend? _backend;
+        private readonly Context? _context;
 
-        public Cli(string[] args, ref Backend backend)
+        public Cli(string[] args, ref Context context)
         {
             _args = args;
-            _backend = backend;
+            _context = context;
         }
 
-        private ILogger Logger => _backend is null ? Log.Logger : _backend.Logger;
+        private ILogger Logger => _context is null ? Log.Logger : _context.Logger;
 
         public bool Write(TomlTable data)
         {

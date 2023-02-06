@@ -16,25 +16,25 @@ public abstract class Widget
     public bool ChildBorder;
 
     private bool _visible = false;
-    protected Backend backend;
+    protected Context Context;
     
-    public Widget(Backend backend, string? Name = null, bool AutoRegister = true)
+    public Widget(Context context, string? Name = null, bool AutoRegister = true)
     {
         this.Name = Name ?? $"{DateTime.UtcNow.ToBinary()}";
-        backend.Logger.Debug($"Initializing Widget {Name}{(AutoRegister ? " (Auto)" : string.Empty)}");
+        context.Logger.Debug($"Initializing Widget {Name}{(AutoRegister ? " (Auto)" : string.Empty)}");
         if (AutoRegister)
         {
-            backend.Events["widgetReg"].Children.Add(this.Name, new Event(new Dictionary<string, Event>
+            context.Events["widgetReg"].Children.Add(this.Name, new Event(new Dictionary<string, Event>
             {
                 { "open", new Event() },
                 { "close", new Event() },
                 { "toggle", new Event() }
             }));
-            backend.WidgetReg.Add(Name ?? $"{DateTime.UtcNow.Millisecond}", this);
-            backend.Events["onMainMenuBar"]["Debug"].Hook += RenderOnMainMenuBar_Debug;
+            context.WidgetRegistry.Add(Name ?? $"{DateTime.UtcNow.Millisecond}", this);
+            context.Events["onMainMenuBar"]["Debug"].Hook += RenderOnMainMenuBar_Debug;
         }
 
-        this.backend = backend;
+        this.Context = context;
     }
     
     private dynamic? RenderOnMainMenuBar_Debug(params dynamic[]? args)
@@ -127,27 +127,27 @@ public abstract class Widget
     public void Open()
     {
         Visible = true;
-        if (backend.Events["widgetReg"].Children.ContainsKey(Name))
-            backend.Events["widgetReg"][Name]["open"].Invoke(this);
+        if (Context.Events["widgetReg"].Children.ContainsKey(Name))
+            Context.Events["widgetReg"][Name]["open"].Invoke(this);
     }
 
     public void Close()
     {
         Visible = false;
-        if (backend.Events["widgetReg"].Children.ContainsKey(Name))
-            backend.Events["widgetReg"][Name]["close"].Invoke(this);
+        if (Context.Events["widgetReg"].Children.ContainsKey(Name))
+            Context.Events["widgetReg"][Name]["close"].Invoke(this);
     }
 
     public void Toggle()
     {
         Visible = !Visible;
-        if (!backend.Events["widgetReg"].Children.ContainsKey(Name))
+        if (!Context.Events["widgetReg"].Children.ContainsKey(Name))
             return;
         if (Visible)
-            backend.Events["widgetReg"][Name]["close"].Invoke(this);
+            Context.Events["widgetReg"][Name]["close"].Invoke(this);
         else
-            backend.Events["widgetReg"][Name]["open"].Invoke(this);
-        backend.Events["widgetReg"][Name]["toggle"].Invoke(this);
+            Context.Events["widgetReg"][Name]["open"].Invoke(this);
+        Context.Events["widgetReg"][Name]["toggle"].Invoke(this);
     }
 }
 

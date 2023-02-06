@@ -9,7 +9,7 @@ public class Event
     public Event(Dictionary<string, Event>? children = null)
     {
         Children = children ?? new Dictionary<string, Event>();
-        Hook += args => { return null; };
+        Hook += args => null;
     }
 
     public Event this[string idx] => Children[idx];

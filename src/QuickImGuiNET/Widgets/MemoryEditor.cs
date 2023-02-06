@@ -54,7 +54,7 @@ public static partial class Widgets
         private Sizes s;
         public Action<byte[], int, byte>? WriteFn; // optional handler to write bytes.
 
-        public MemoryEditor(Backend backend, string Name, bool AutoRegister = true) : base(backend, Name, AutoRegister) {}
+        public MemoryEditor(Context context, string Name, bool AutoRegister = true) : base(context, Name, AutoRegister) {}
 
         public void GotoAddrAndHighlight(int addr_min, int addr_max)
         {

@@ -1,5 +1,3 @@
-#pragma warning disable CS8618
-
 using System.Runtime.InteropServices;
 using ImGuiNET;
 using Veldrid;
@@ -62,7 +60,7 @@ public class ImGuiWindow : IDisposable
 
     public void Dispose()
     {
-        _gd.WaitForIdle(); // TODO: Shouldn't be necessary, but Vulkan backend trips a validation error (swapchain in use when disposed).
+        _gd.WaitForIdle(); // TODO: Shouldn't be necessary, but Vulkan renderer trips a validation error (swapchain in use when disposed).
         Swapchain.Dispose();
         Window.Close();
         _gcHandle.Free();
@@ -73,5 +71,3 @@ public class ImGuiWindow : IDisposable
         Window.PumpEvents();
     }
 }
-
-#pragma warning restore CS8618

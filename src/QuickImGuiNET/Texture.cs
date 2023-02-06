@@ -57,12 +57,12 @@ public class Texture
     public event Action<OnTextureChangedEventArgs>? OnChanged;
 
     //----------------------------------------------------------------------------------------------------------------------
-    public static Texture Bind(string FilePath, Backend backend, ScalingMode? scaleMode = null)
+    public static Texture Bind(string FilePath, Context context, ScalingMode? scaleMode = null)
     {
         var texture = new Texture(FilePath, scaleMode ?? ScalingMode.Linear);
-        texture.ID = backend.BindTexture(texture);
+        texture.ID = context.TextureManager.BindTexture(texture);
 
-        texture.OnChanged += e => backend.UpdateTexture(e.newT);
+        texture.OnChanged += e => context.TextureManager.UpdateTexture(e.newT);
 
         return texture;
     }

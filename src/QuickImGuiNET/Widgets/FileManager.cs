@@ -35,10 +35,10 @@ public static partial class Widgets
         public bool ShowHiddenFiles;
         public bool ShowSystemFiles;
 
-        public FileManager(Backend backend, string Name, bool AutoRegister = true) : base(backend, Name, AutoRegister)
+        public FileManager(Context context, string Name, bool AutoRegister = true) : base(context, Name, AutoRegister)
         {
             //Create ConfirmPrompt Widget w/o auto-registration
-            Prompt = new ConfirmPrompt(backend, $"{Name}_ConfirmPrompt001", false)
+            Prompt = new ConfirmPrompt(context, $"{Name}_ConfirmPrompt001", false)
             {
                 Visible = false,
                 RenderMode = WidgetRenderMode.Modal,
@@ -48,7 +48,7 @@ public static partial class Widgets
                 Size = new Vector2(300, 100),
                 //FIXME: Calling .Close() instead of manually setting Visible triggers
                 //      the event twice, perhaps a quirk with Widget.RenderInModal() ?
-                OkHandler = () => backend.WidgetReg[Name].Visible = false,
+                OkHandler = () => context.WidgetRegistry[Name].Visible = false,
                 CancelHandler = () => { },
                 Prompt = "A file with that path already exists, are you sure you want to save over it?",
                 ButtonOK = "Save",
@@ -56,14 +56,14 @@ public static partial class Widgets
             };
 
             //Manually register events for prompt, we only need "close" but if all 3 aren't registered it'll complain
-            backend.Events["widgetReg"].Children.Add($"{Name}_ConfirmPrompt001",
+            context.Events["widgetReg"].Children.Add($"{Name}_ConfirmPrompt001",
                 new Event(new Dictionary<string, Event>
                 {
                     { "open", new Event() },
                     { "close", new Event() },
                     { "toggle", new Event() }
                 }));
-            backend.Events["widgetReg"][$"{Name}_ConfirmPrompt001"]["close"].Hook += p =>
+            context.Events["widgetReg"][$"{Name}_ConfirmPrompt001"]["close"].Hook += p =>
             {
                 (p?[0].OkOrCancel ? p?[0].OkHandler : p?[0].CancelHandler)?.Invoke();
                 return null;
@@ -183,7 +183,7 @@ public static partial class Widgets
             }
 
             // Render the confirmation prompt inside this one so they stack properly
-            // This would break if the prompt was auto-registered to backend.WidgetReg
+            // This would break if the prompt was auto-registered to context.WidgetRegistry
             // as that would try to draw the confirmation prompt on it's own instead of here
             Prompt.Render();
         }

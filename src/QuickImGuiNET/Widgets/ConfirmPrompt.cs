@@ -14,7 +14,7 @@ public static partial class Widgets
         public bool OkOrCancel;
         public string Prompt = "test";
 
-        public ConfirmPrompt(Backend backend, string Name, bool AutoRegister = true) : base(backend, Name, AutoRegister) { }
+        public ConfirmPrompt(Context context, string Name, bool AutoRegister = true) : base(context, Name, AutoRegister) { }
 
         public override void RenderContent()
         {

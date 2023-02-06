@@ -7,16 +7,16 @@ public partial class Config
 {
     public class Toml : IConfigSink, IConfigSource
     {
-        private readonly Backend? _backend;
+        private readonly Context? _context;
         private readonly string _path;
 
-        public Toml(string path, ref Backend backend)
+        public Toml(string path, ref Context context)
         {
             _path = Path.GetFullPath(path);
-            _backend = backend;
+            _context = context;
         }
 
-        private ILogger Logger => _backend is null ? Log.Logger : _backend.Logger;
+        private ILogger Logger => _context is null ? Log.Logger : _context.Logger;
 
         public bool Write(TomlTable data)
         {
