@@ -8,6 +8,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "QuickImGuiNET.Veldrid", "Qu
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "QuickImGuiNET.Example.Veldrid", "examples\QuickImGuiNET.Example.Veldrid\QuickImGuiNET.Example.Veldrid.csproj", "{F8BB6790-D712-4C49-AC25-47CFFFE160E3}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Build", "..\build\Build.csproj", "{A6F70492-1C48-4D62-A450-C17C3621AC03}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -30,5 +32,9 @@ Global
 		{F8BB6790-D712-4C49-AC25-47CFFFE160E3}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{F8BB6790-D712-4C49-AC25-47CFFFE160E3}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{F8BB6790-D712-4C49-AC25-47CFFFE160E3}.Release|Any CPU.Build.0 = Release|Any CPU
+		{A6F70492-1C48-4D62-A450-C17C3621AC03}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{A6F70492-1C48-4D62-A450-C17C3621AC03}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{A6F70492-1C48-4D62-A450-C17C3621AC03}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{A6F70492-1C48-4D62-A450-C17C3621AC03}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 EndGlobal

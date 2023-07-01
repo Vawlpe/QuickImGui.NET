@@ -54,7 +54,22 @@ public partial class Config
                         {
                             foreach (var kvp in tbl)
                                 if (kvp.Value is TomlTable child)
-                                    Recurse(child, ref data);
+                                {
+                                    TomlTable curr = new();
+                                    Recurse(child, ref curr);
+                                    if (data.ContainsKey(kvp.Key))
+                                    {
+                                        foreach (var v in curr)
+                                        {
+                                            if (((TomlTable)data[kvp.Key]).ContainsKey(v.Key))
+                                                ((TomlTable)data[kvp.Key])[v.Key] = v.Value;
+                                            else
+                                                ((TomlTable)data[kvp.Key]).Add(v.Key,v.Value);
+                                        }
+                                    }
+                                    else
+                                        data.Add(kvp.Key, curr);
+                                }
                                 else if (!data.ContainsKey(kvp.Key))
                                     data.Add(kvp.Key, kvp.Value);
                         }

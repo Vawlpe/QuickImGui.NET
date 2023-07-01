@@ -6,12 +6,12 @@ public abstract class Context
     public Config Config = new();
     public Serilog.ILogger Logger = Serilog.Log.Logger;
     public Dictionary<string, Event> Events = new();
-    public Dictionary<string, Widget> WidgetRegistry = new();
+    public Dictionary<string, Widget> WidgetReg = new();
 
-    public IRenderer Renderer;
-    public IWindowManager WindowManager;
-    public IInputManager InputManager;
-    public ITextureManager TextureManager;
+    public virtual IRenderer Renderer { get; set; }
+    public virtual IWindowManager WindowManager  { get; set; }
+    public virtual IInputManager InputManager { get; set; }
+    public virtual ITextureManager TextureManager { get; set; }
 
     public ImGuiIOPtr Io = ImGui.GetIO();
     public ImGuiPlatformIOPtr PlatformIo = ImGui.GetPlatformIO();

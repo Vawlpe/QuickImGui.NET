@@ -10,7 +10,7 @@ namespace QuickImGuiNET.Example.Veldrid;
 
 public class Program
 {
-    public static Backend backend;
+    public static Context ctx;
 
     public static bool showDemoWindow;
 
@@ -27,12 +27,12 @@ public class Program
         Log.Information("QIMGUIN v0.1");
 
         // Re-usable vars for cfg sinks/sources
-        var cfg_toml = new Config.Toml("QIMGUIN.cfg", ref backend);
-        var cfg_cli = new Config.Cli(args, ref backend);
+        var cfg_toml = new Config.Toml("QIMGUIN.cfg", ref ctx);
+        var cfg_cli = new Config.Cli(args, ref ctx);
 
         // Backend shadow ctor
         Log.Logger.Information("Initializing Veldrid Backend");
-        backend = new VRBK.Backend
+        ctx = new VRBK.Context
         {
             // Add Config to shadow backend
             Config = new Config
@@ -42,7 +42,7 @@ public class Program
                     @"width = 1280",
                     @"height = 720",
                     "\n[veldrid]",
-                    @"backend = -1",
+                    @"renderer = -1",
                     "\n[serilog]",
                     @"minimumLevel = ""Debug""",
                     "\n[serilog.using]",
@@ -89,15 +89,15 @@ public class Program
         };
 
         // Loading config sources
-        backend.Logger.Information($"Loading default config + ({backend.Config.Sources.Length}) source(s)");
-        backend.Config.LoadDefault();
-        backend.Config.From(backend.Config.Sources[0]);
-        backend.Config.From(backend.Config.Sources[1]);
+        ctx.Logger.Information($"Loading default config + ({ctx.Config.Sources.Length}) source(s)");
+        ctx.Config.LoadDefault();
+        ctx.Config.From(ctx.Config.Sources[0]);
+        ctx.Config.From(ctx.Config.Sources[1]);
 
-        backend.Logger.Information("Initializing new logger using config");
+        ctx.Logger.Information("Initializing new logger using config");
         Log.CloseAndFlush();
         Log.Logger = new LoggerConfiguration()
-            .ReadFrom.KeyValuePairs(((TomlTable)backend.Config["serilog"]).SelectMany(kvp =>
+            .ReadFrom.KeyValuePairs(((TomlTable)ctx.Config["serilog"]).SelectMany(kvp =>
                 kvp.Key switch
                 {
                     "using" => ((TomlTable)kvp.Value).Select(use =>
@@ -108,14 +108,14 @@ public class Program
                     _ => new[] { new KeyValuePair<string, string>(kvp.Key, (string)kvp.Value) }
                 }
             )).CreateLogger();
-        backend.Logger = Log.Logger;
+        ctx.Logger = Log.Logger;
 
         // Initialize shadow -> ready backend
-        backend.Logger.Information("Config Done, ready to initialize Veldrid Backend");
-        backend.Init();
+        ctx.Logger.Information("Config Done, ready to initialize Veldrid Backend");
+        ctx.Init();
 
-        // Auto-register widgets to backend
-        new ExampleWidget(backend, "ExampleWidget##example00")
+        //Auto-register widgets to backend
+        new ExampleWidget(ctx, "ExampleWidget##example00")
         {
             Visible = true,
             RenderMode = WidgetRenderMode.Window,
@@ -125,7 +125,7 @@ public class Program
             PositionCond = ImGuiCond.FirstUseEver,
             IconRenderSize = new Vector2(128, 128)
         };
-        new ExampleWidget(backend, "ExampleWidget##example01")
+        new ExampleWidget(ctx, "ExampleWidget##example01")
         {
             Visible = true,
             RenderMode = WidgetRenderMode.Window,
@@ -135,7 +135,7 @@ public class Program
             PositionCond = ImGuiCond.FirstUseEver,
             IconRenderSize = new Vector2(256, 256)
         };
-        new Widgets.FileManager(backend, "FileManager##example00")
+        new Widgets.FileManager(ctx, "FileManager##example00")
         {
             Visible = false,
             RenderMode = WidgetRenderMode.Modal,
@@ -154,7 +154,7 @@ public class Program
             },
             CurrentFTQuery = "All"
         };
-        new Widgets.MemoryEditor(backend, "MemoryView##example00")
+        new Widgets.MemoryEditor(ctx, "MemoryView##example00")
         {
             Visible = false,
             RenderMode = WidgetRenderMode.Window,
@@ -195,18 +195,18 @@ public class Program
         };
 
         // Run backend loop and handle errors
-        backend.Logger.Information("Run Backend loop");
+        ctx.Logger.Information("Run Backend loop");
         try
         {
-            backend.Run(Draw, UpdateCallback: Update);
+            ctx.Run(Draw, UpdateCallback: Update);
         }
         catch (Exception e)
         {
-            backend.Logger.Error(e.ToString());
+            ctx.Logger.Error(e.ToString());
         }
         finally
         {
-            backend.Logger.Information($"EXITING: {Environment.ExitCode}");
+            ctx.Logger.Information($"EXITING: {Environment.ExitCode}");
         }
     }
 
@@ -218,24 +218,24 @@ public class Program
             if (ImGui.BeginMenu("Debug"))
             {
                 ImGui.MenuItem("Show Demo Window", string.Empty, ref showDemoWindow);
-                backend.Events["onMainMenuBar"]["Debug"].Invoke();
+                ctx.Events["onMainMenuBar"]["Debug"].Invoke();
                 ImGui.EndMenu();
             }
 
-            backend.Events["onMainMenuBar"].Invoke();
+            ctx.Events["onMainMenuBar"].Invoke();
             ImGui.EndMainMenuBar();
         }
 
         if (showDemoWindow)
             ImGui.ShowDemoWindow(ref showDemoWindow);
 
-        foreach (var widget in backend.WidgetReg.Values)
+        foreach (var widget in ctx.WidgetReg.Values)
             widget.Render();
     }
 
     private static void Update(float deltaSeconds)
     {
-        foreach (var widget in backend.WidgetReg.Values)
+        foreach (var widget in ctx.WidgetReg.Values)
             widget.Update(deltaSeconds);
     }
 }

@@ -35,10 +35,10 @@ public static partial class Widgets
         public bool ShowHiddenFiles;
         public bool ShowSystemFiles;
 
-        public FileManager(Context context, string Name, bool AutoRegister = true) : base(context, Name, AutoRegister)
+        public FileManager(Context ctx, string Name, bool AutoRegister = true) : base(ctx, Name, AutoRegister)
         {
             //Create ConfirmPrompt Widget w/o auto-registration
-            Prompt = new ConfirmPrompt(context, $"{Name}_ConfirmPrompt001", false)
+            Prompt = new ConfirmPrompt(ctx, $"{Name}_ConfirmPrompt001", false)
             {
                 Visible = false,
                 RenderMode = WidgetRenderMode.Modal,
@@ -48,7 +48,7 @@ public static partial class Widgets
                 Size = new Vector2(300, 100),
                 //FIXME: Calling .Close() instead of manually setting Visible triggers
                 //      the event twice, perhaps a quirk with Widget.RenderInModal() ?
-                OkHandler = () => context.WidgetRegistry[Name].Visible = false,
+                OkHandler = () => ctx.WidgetReg[Name].Visible = false,
                 CancelHandler = () => { },
                 Prompt = "A file with that path already exists, are you sure you want to save over it?",
                 ButtonOK = "Save",
@@ -56,14 +56,14 @@ public static partial class Widgets
             };
 
             //Manually register events for prompt, we only need "close" but if all 3 aren't registered it'll complain
-            context.Events["widgetReg"].Children.Add($"{Name}_ConfirmPrompt001",
+            ctx.Events["widgetReg"].Children.Add($"{Name}_ConfirmPrompt001",
                 new Event(new Dictionary<string, Event>
                 {
                     { "open", new Event() },
                     { "close", new Event() },
                     { "toggle", new Event() }
                 }));
-            context.Events["widgetReg"][$"{Name}_ConfirmPrompt001"]["close"].Hook += p =>
+            ctx.Events["widgetReg"][$"{Name}_ConfirmPrompt001"]["close"].Hook += p =>
             {
                 (p?[0].OkOrCancel ? p?[0].OkHandler : p?[0].CancelHandler)?.Invoke();
                 return null;

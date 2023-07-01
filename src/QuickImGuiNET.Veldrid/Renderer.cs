@@ -50,7 +50,6 @@ public class Renderer : IRenderer
             _ctx.GraphicsBackend);
         CmdList = GDevice.ResourceFactory.CreateCommandList();
         
-        
         var outputDescription = GDevice.MainSwapchain.Framebuffer.OutputDescription;
         var factory = GDevice.ResourceFactory;
 

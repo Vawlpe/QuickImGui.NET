@@ -34,7 +34,13 @@ public class WindowManager : IWindowManager
             Marshal.GetFunctionPointerForDelegate<Platform_GetWindowSize>(GetWindowSize));
         
         MainWindow = VeldridStartup.CreateWindow(new WindowCreateInfo(50, 50, mainWidth, mainHeight, VR.WindowState.Normal, "QIMGUIN"));
-        MainWindow.Resized += () => WindowResized(MainWindow.Width, MainWindow.Height);
+        MainWindow.Resized += () =>
+        {
+            _ctx.Renderer.GDevice.MainSwapchain.Resize((uint)MainWindow.Width, (uint)MainWindow.Height);
+            WindowResized(MainWindow.Width, MainWindow.Height);
+        };
+        MainWindow.Width = mainWidth;
+        MainWindow.Height = mainHeight;
         
         var mainViewport = _ctx.PlatformIo.Viewports[0];
         mainViewport.PlatformHandle = MainWindow.Handle;

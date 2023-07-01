@@ -7,13 +7,30 @@ namespace QuickImGuiNET.Veldrid;
 
 public class Context : QuickImGuiNET.Context, IDisposable
 {
-    public new Renderer Renderer;
-    public new InputManager InputManager;
-    public new WindowManager WindowManager;
-    public new TextureManager TextureManager;
+
+    public new  Renderer Renderer
+    {
+        get => (Renderer)base.Renderer;
+        set => base.Renderer = value;
+    }
+
+    public new InputManager InputManager 
+    {
+        get => (InputManager)base.InputManager;
+        set => base.InputManager = value;
+    }
+    public new WindowManager WindowManager 
+    {
+        get => (WindowManager)base.WindowManager;
+        set => base.WindowManager = value;
+    }
+    public new TextureManager TextureManager
+    {
+        get => (TextureManager)base.TextureManager;
+        set => base.TextureManager = value;
+    }
 
     public VR.GraphicsBackend GraphicsBackend;
-    
     private static readonly Vector3 _clearColor = new(0.45f, 0.55f, 0.6f);
 
     public override unsafe void Init()
@@ -32,18 +49,18 @@ public class Context : QuickImGuiNET.Context, IDisposable
                             ? VR.GraphicsBackend.Direct3D11 // Direct3D11 is only available on Windows and is only a fallback if OpenGL is not available either
                             : throw new InvalidOperationException("No supported renderer found...");
         else
-            GraphicsBackend = gfxbk;
-        
+            GraphicsBackend = (VR.GraphicsBackend)gfxbk;
+
         // Initialize ImGui Context
         var context = ImGui.CreateContext();
         ImGui.SetCurrentContext(context);
         Io = ImGui.GetIO();
         PlatformIo = ImGui.GetPlatformIO();
-        
+
         // Initialize QIMGUIN Systems
+        TextureManager = new(this);
         Renderer = new(this);
         WindowManager = new(width, height, this);
-        TextureManager = new(this);
         InputManager = new();
 
         // Set up ImGui IO
@@ -68,9 +85,6 @@ public class Context : QuickImGuiNET.Context, IDisposable
 
         Renderer.SetPerFrameImGuiData(1f / 60f);
         Renderer.UpdateMonitors();
-
-        ImGui.NewFrame();
-        Renderer.FrameBegun = true;
     }
 
     public override void Run(
@@ -150,8 +164,8 @@ public class Context : QuickImGuiNET.Context, IDisposable
     
     public override void Dispose()
     {
+        Renderer.Dispose();
         TextureManager.Dispose();
         WindowManager.Dispose();
-        Renderer.Dispose();
     }
 }
