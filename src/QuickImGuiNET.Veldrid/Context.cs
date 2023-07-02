@@ -65,7 +65,7 @@ public class Context : QuickImGuiNET.Context, IDisposable
 
         // Set up ImGui IO
         Io.ConfigFlags |= ImGuiConfigFlags.DockingEnable;
-        if ((VR.GraphicsBackend)gfxbk == VR.GraphicsBackend.Vulkan)
+        if ((VR.GraphicsBackend)gfxbk != VR.GraphicsBackend.OpenGL)
             Io.ConfigFlags |= ImGuiConfigFlags.ViewportsEnable;
 
         Io.NativePtr->BackendPlatformName =

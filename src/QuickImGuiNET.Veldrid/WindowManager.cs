@@ -15,23 +15,46 @@ public class WindowManager : IWindowManager
     private Context _ctx;
     public Sdl2Window MainWindow;
     
+    private Platform_CreateWindow _createWindow;
+    private Platform_DestroyWindow _destroyWindow;
+    private Platform_ShowWindow _showWindow;
+    private Platform_SetWindowPos _setWindowPos;
+    private Platform_SetWindowSize _setWindowSize;
+    private Platform_SetWindowFocus _setWindowFocus;
+    private Platform_GetWindowFocus _getWindowFocus;
+    private Platform_GetWindowMinimized _getWindowMinimized;
+    private Platform_SetWindowTitle _setWindowTitle;
+    private Platform_GetWindowPos _getWindowPos;
+    private Platform_GetWindowPos _getWindowSize;
+    
     public unsafe WindowManager(int mainWidth, int mainHeight, Context ctx)
     {
+        _createWindow = CreateWindow;
+        _destroyWindow = DestroyWindow;
+        _showWindow = ShowWindow;
+        _setWindowPos = SetWindowPos;
+        _setWindowSize = SetWindowSize;
+        _setWindowFocus = SetWindowFocus;
+        _getWindowFocus = GetWindowFocus;
+        _getWindowMinimized = GetWindowMinimized;
+        _setWindowTitle = SetWindowTitle;
+        _getWindowPos = GetWindowPos;
+        _getWindowSize = GetWindowSize;
+
         _ctx = ctx;
-        
-        _ctx.PlatformIo.Platform_CreateWindow = Marshal.GetFunctionPointerForDelegate<Platform_CreateWindow>(CreateWindow);
-        _ctx.PlatformIo.Platform_DestroyWindow = Marshal.GetFunctionPointerForDelegate<Platform_DestroyWindow>(DestroyWindow);
-        _ctx.PlatformIo.Platform_ShowWindow = Marshal.GetFunctionPointerForDelegate<Platform_ShowWindow>(ShowWindow);
-        _ctx.PlatformIo.Platform_SetWindowPos = Marshal.GetFunctionPointerForDelegate<Platform_SetWindowPos>(SetWindowPos);
-        _ctx.PlatformIo.Platform_SetWindowSize = Marshal.GetFunctionPointerForDelegate<Platform_SetWindowSize>(SetWindowSize);
-        _ctx.PlatformIo.Platform_SetWindowFocus = Marshal.GetFunctionPointerForDelegate<Platform_SetWindowFocus>(SetWindowFocus);
-        _ctx.PlatformIo.Platform_GetWindowFocus = Marshal.GetFunctionPointerForDelegate<Platform_GetWindowFocus>(GetWindowFocus);
-        _ctx.PlatformIo.Platform_GetWindowMinimized = Marshal.GetFunctionPointerForDelegate<Platform_GetWindowMinimized>(GetWindowMinimized);
-        _ctx.PlatformIo.Platform_SetWindowTitle = Marshal.GetFunctionPointerForDelegate<Platform_SetWindowTitle>(SetWindowTitle);
+        _ctx.PlatformIo.Platform_CreateWindow = Marshal.GetFunctionPointerForDelegate(_createWindow);
+        _ctx.PlatformIo.Platform_DestroyWindow = Marshal.GetFunctionPointerForDelegate(_destroyWindow);
+        _ctx.PlatformIo.Platform_ShowWindow = Marshal.GetFunctionPointerForDelegate(_showWindow);
+        _ctx.PlatformIo.Platform_SetWindowPos = Marshal.GetFunctionPointerForDelegate(_setWindowPos);
+        _ctx.PlatformIo.Platform_SetWindowSize = Marshal.GetFunctionPointerForDelegate(_setWindowSize);
+        _ctx.PlatformIo.Platform_SetWindowFocus = Marshal.GetFunctionPointerForDelegate(_setWindowFocus);
+        _ctx.PlatformIo.Platform_GetWindowFocus = Marshal.GetFunctionPointerForDelegate(_getWindowFocus);
+        _ctx.PlatformIo.Platform_GetWindowMinimized = Marshal.GetFunctionPointerForDelegate(_getWindowMinimized);
+        _ctx.PlatformIo.Platform_SetWindowTitle = Marshal.GetFunctionPointerForDelegate(_setWindowTitle);
         ImGuiNative.ImGuiPlatformIO_Set_Platform_GetWindowPos(_ctx.PlatformIo.NativePtr,
-            Marshal.GetFunctionPointerForDelegate<Platform_GetWindowPos>(GetWindowPos));
+            Marshal.GetFunctionPointerForDelegate(_getWindowPos));
         ImGuiNative.ImGuiPlatformIO_Set_Platform_GetWindowSize(_ctx.PlatformIo.NativePtr,
-            Marshal.GetFunctionPointerForDelegate<Platform_GetWindowSize>(GetWindowSize));
+            Marshal.GetFunctionPointerForDelegate(_getWindowSize));
         
         MainWindow = VeldridStartup.CreateWindow(new WindowCreateInfo(50, 50, mainWidth, mainHeight, VR.WindowState.Normal, "QIMGUIN"));
         MainWindow.Resized += () =>
